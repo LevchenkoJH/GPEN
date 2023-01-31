@@ -297,49 +297,85 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
+    # Желательно знать для чего нужен каждый аргумент
+
     parser.add_argument('--path', type=str, required=True)
+
     parser.add_argument('--base_dir', type=str, default='./')
+
     parser.add_argument('--iter', type=int, default=4000000)
+
     parser.add_argument('--batch', type=int, default=4)
+
     parser.add_argument('--size', type=int, default=256)
+
     parser.add_argument('--channel_multiplier', type=int, default=2)
+
     parser.add_argument('--narrow', type=float, default=1.0)
+
     parser.add_argument('--r1', type=float, default=10)
+
     parser.add_argument('--path_regularize', type=float, default=2)
+
     parser.add_argument('--path_batch_shrink', type=int, default=2)
+
     parser.add_argument('--d_reg_every', type=int, default=16)
+
     parser.add_argument('--g_reg_every', type=int, default=4)
+
     parser.add_argument('--save_freq', type=int, default=10000)
+
     parser.add_argument('--lr', type=float, default=0.002)
+
     parser.add_argument('--local_rank', type=int, default=0)
+
     parser.add_argument('--ckpt', type=str, default='ckpts')
+
     parser.add_argument('--pretrain', type=str, default=None)
+
     parser.add_argument('--sample', type=str, default='sample')
+
     parser.add_argument('--val_dir', type=str, default='val')
 
+    # Аргументы достаем из этой переменной
     args = parser.parse_args()
+
+    # Выяснить для чего создаются эти директории
 
     os.makedirs(args.ckpt, exist_ok=True)
     os.makedirs(args.sample, exist_ok=True)
 
+    # Попробовать использовать 'cpu' в место 'cuda'
     device = 'cuda'
 
+    # Скорее всего имеется в виду количество видеокарт
     n_gpu = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     args.distributed = n_gpu > 1
 
+    # На случай если у нас больше одной видеокарты
+    # У нас всегда одна видеокарта
+    # Можно будет закомментировать
     if args.distributed:
         torch.cuda.set_device(args.local_rank)
         torch.distributed.init_process_group(backend='nccl', init_method='env://')
         synchronize()
 
+    # Не ясно для чего
     args.latent = 512
+    # Неуверен, думаю количество потоков для мультипроцессинга
     args.n_mlp = 8
 
+    # Стартовая итерация
+    # Видимо, для пауз процесса обучения
     args.start_iter = 0
 
+    # Разобрать !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # Модель генератора
     generator = FullGenerator(
         args.size, args.latent, args.n_mlp, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
     ).to(device)
+    # Разобрать !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # Дискриминатор
     discriminator = Discriminator(
         args.size, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
     ).to(device)
