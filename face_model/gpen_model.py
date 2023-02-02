@@ -625,6 +625,12 @@ class ResBlock(nn.Module):
 
         return out
 
+# Начали разбор
+# ('--size', type=int, default=256)
+# args.latent = 512
+# args.n_mlp = 8
+# ('--channel_multiplier', type=int, default=2)
+# ('--narrow', type=float, default=1.0)
 class FullGenerator(nn.Module):
     def __init__(
         self,
@@ -638,23 +644,31 @@ class FullGenerator(nn.Module):
         narrow=1,
         device='cpu'
     ):
+        print("Generator init")
         super().__init__()
         channels = {
-            4: int(512 * narrow),
-            8: int(512 * narrow),
-            16: int(512 * narrow),
-            32: int(512 * narrow),
-            64: int(256 * channel_multiplier * narrow),
-            128: int(128 * channel_multiplier * narrow),
-            256: int(64 * channel_multiplier * narrow),
-            512: int(32 * channel_multiplier * narrow),
-            1024: int(16 * channel_multiplier * narrow),
-            2048: int(8 * channel_multiplier * narrow)
+            4: int(512 * narrow), # 1024
+            8: int(512 * narrow), # 1024
+            16: int(512 * narrow), # 1024
+            32: int(512 * narrow), # 1024
+            64: int(256 * channel_multiplier * narrow), # 512
+            128: int(128 * channel_multiplier * narrow), # 256
+            256: int(64 * channel_multiplier * narrow), # 128
+            512: int(32 * channel_multiplier * narrow), # 64
+            1024: int(16 * channel_multiplier * narrow), # 32
+            2048: int(8 * channel_multiplier * narrow) # 16
         }
 
         self.log_size = int(math.log(size, 2))
+        print(self.log_size)
+        # Разобрать!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         self.generator = Generator(size, style_dim, n_mlp, channel_multiplier=channel_multiplier, blur_kernel=blur_kernel, lr_mlp=lr_mlp, isconcat=isconcat, narrow=narrow, device=device)
-        
+
+        # Разобрать!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # Первая свертка задается отдельно
+        # in_channel = 3, скорее всего из-за RGB
+        # out_channel = channels[size] (128),
+        # kernel_size = 1,
         conv = [ConvLayer(3, channels[size], 1, device=device)]
         self.ecd0 = nn.Sequential(*conv)
         in_channel = channels[size]
@@ -662,10 +676,15 @@ class FullGenerator(nn.Module):
         self.names = ['ecd%d'%i for i in range(self.log_size-1)]
         for i in range(self.log_size, 2, -1):
             out_channel = channels[2 ** (i - 1)]
+            # print('i', i, 'size', 2 ** (i - 1), 'out_channel', out_channel)
             #conv = [ResBlock(in_channel, out_channel, blur_kernel)]
-            conv = [ConvLayer(in_channel, out_channel, 3, downsample=True, device=device)] 
+            print('in_channel', in_channel, 'out_channel', out_channel)
+            conv = [ConvLayer(in_channel, out_channel, 3, downsample=True, device=device)]
+            # setattr(x, 'y', v) is equivalent to ``x.y = v''
             setattr(self, self.names[self.log_size-i+1], nn.Sequential(*conv))
+            # print(self.names[self.log_size-i+1])
             in_channel = out_channel
+        # Разобрать!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         self.final_linear = nn.Sequential(EqualLinear(channels[4] * 4 * 4, style_dim, activation='fused_lrelu', device=device))
 
     def forward(self,
