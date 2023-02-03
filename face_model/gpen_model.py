@@ -695,16 +695,34 @@ class FullGenerator(nn.Module):
         truncation_latent=None,
         input_is_latent=False,
     ):
+        # Для чего шум - не ясно
         noise = []
+        # Проходим по сверточным слоям
         for i in range(self.log_size-1):
+            # Получаем слой
             ecd = getattr(self, self.names[i])
+            # Получаем его выход
             inputs = ecd(inputs)
+            # В шум отправляется выход каждого слоя
             noise.append(inputs)
             #print(inputs.shape)
+        # Возвращает новый тензор с теми же данными, что и self-тензор, но с другим shape.
+        # Изменение размера тентора, для чего - не ясно
         inputs = inputs.view(inputs.shape[0], -1)
+        # Последний уже линейный слой
         outs = self.final_linear(inputs)
         #print(outs.shape)
+        # Не уверен
+        # repeat(10, 3) --> 10 10 10
+        # chained = chain.from_iterable(('ab', [33]))
+        #     next(chained)  # a
+        #     next(chained)  # b
+        #     next(chained)  # 33
+        # Способ обхода цикла
+        # Получение шума для генератора
         noise = list(itertools.chain.from_iterable(itertools.repeat(x, 2) for x in noise))[::-1]
+        # Шум и выход отправляются в генератор
+        # Шум формируется на основании промежуточных выходов сверточных слоев
         outs = self.generator([outs], return_latents, inject_index, truncation, truncation_latent, input_is_latent, noise=noise[1:])
         return outs
 
