@@ -397,6 +397,8 @@ class Generator(nn.Module):
         self.style_dim = style_dim
         self.feat_multiplier = 2 if isconcat else 1
 
+        #     def forward(self, input):
+        #         return input * torch.rsqrt(torch.mean(input ** 2, dim=1, keepdim=True) + 1e-8)
         layers = [PixelNorm()]
 
         for i in range(n_mlp):
@@ -644,7 +646,7 @@ class FullGenerator(nn.Module):
         narrow=1,
         device='cpu'
     ):
-        print("Generator init")
+        # print("Generator init")
         super().__init__()
         channels = {
             4: int(512 * narrow), # 1024
@@ -660,7 +662,7 @@ class FullGenerator(nn.Module):
         }
 
         self.log_size = int(math.log(size, 2))
-        print(self.log_size)
+        # print(self.log_size)
         # Разобрать!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         self.generator = Generator(size, style_dim, n_mlp, channel_multiplier=channel_multiplier, blur_kernel=blur_kernel, lr_mlp=lr_mlp, isconcat=isconcat, narrow=narrow, device=device)
 
@@ -678,7 +680,7 @@ class FullGenerator(nn.Module):
             out_channel = channels[2 ** (i - 1)]
             # print('i', i, 'size', 2 ** (i - 1), 'out_channel', out_channel)
             #conv = [ResBlock(in_channel, out_channel, blur_kernel)]
-            print('in_channel', in_channel, 'out_channel', out_channel)
+            # print('in_channel', in_channel, 'out_channel', out_channel)
             conv = [ConvLayer(in_channel, out_channel, 3, downsample=True, device=device)]
             # setattr(x, 'y', v) is equivalent to ``x.y = v''
             setattr(self, self.names[self.log_size-i+1], nn.Sequential(*conv))

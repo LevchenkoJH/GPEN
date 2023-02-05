@@ -36,6 +36,8 @@ from distributed import (
 from training import lpips
 
 
+# shuffle - перемешивать
+# distributed - распределенный
 def data_sampler(dataset, shuffle, distributed):
     if distributed:
         return data.distributed.DistributedSampler(dataset, shuffle=shuffle)
@@ -133,7 +135,13 @@ def validation(model, lpips_func, args, device):
     return dist_sum.data/len(lq_files)
 
 
-def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_ema, lpips_func, device):
+# def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_ema, lpips_func, device):
+# def train(args, loader,  device):
+def train(args, loader, generator, discriminator, device):
+
+
+    print("--------------------------------------------TRAIN-------------------------------------------")
+
     loader = sample_data(loader)
 
     pbar = range(0, args.iter)
@@ -151,13 +159,13 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
     mean_path_length_avg = 0
     loss_dict = {}
 
-    if args.distributed:
-        g_module = generator.module
-        d_module = discriminator.module
-
-    else:
-        g_module = generator
-        d_module = discriminator
+    # if args.distributed:
+    #     g_module = generator.module
+    #     d_module = discriminator.module
+    #
+    # else:
+    #     g_module = generator
+    #     d_module = discriminator
  
     accum = 0.5 ** (32 / (10 * 1000))
 
@@ -169,18 +177,31 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
 
             break
 
+
+        # [4, 3, 256, 256] - сейчас
+        # [4, 2, 3, 256, 256] - нужно теперь
         degraded_img, real_img = next(loader)
+        print("deg", degraded_img.shape)
+        print("real", real_img.shape)
+
         degraded_img = degraded_img.to(device)
         real_img = real_img.to(device)
 
         requires_grad(generator, False)
         requires_grad(discriminator, True)
 
+        # Второе None
         fake_img, _ = generator(degraded_img)
+
+        print("generator (fake_img) ->", fake_img.shape)
         fake_pred = discriminator(fake_img)
+        print("discriminator (fake_pred) ->", fake_pred.shape)
 
         real_pred = discriminator(real_img)
+        print("discriminator (real_pred) ->", type(real_pred))
+
         d_loss = d_logistic_loss(real_pred, fake_pred)
+        print("d_logistic_loss", d_loss)
 
         loss_dict['d'] = d_loss
         loss_dict['real_score'] = real_pred.mean()
@@ -189,108 +210,123 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         discriminator.zero_grad()
         d_loss.backward()
         d_optim.step()
+        #
+        # d_regularize = i % args.d_reg_every == 0
+        #
+        # if d_regularize:
+        #     real_img.requires_grad = True
+        #     real_pred = discriminator(real_img)
+        #     r1_loss = d_r1_loss(real_pred, real_img)
+        #
+        #     discriminator.zero_grad()
+        #     (args.r1 / 2 * r1_loss * args.d_reg_every + 0 * real_pred[0]).backward()
+        #
+        #     d_optim.step()
+        #
+        # loss_dict['r1'] = r1_loss
+        #
+        # requires_grad(generator, True)
+        # requires_grad(discriminator, False)
+        #
+        # fake_img, _ = generator(degraded_img)
+        # fake_pred = discriminator(fake_img)
+        # g_loss = g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img)
+        #
+        # loss_dict['g'] = g_loss
+        #
+        # generator.zero_grad()
+        # g_loss.backward()
+        # g_optim.step()
+        #
+        # g_regularize = i % args.g_reg_every == 0
+        #
+        # if g_regularize:
+        #     path_batch_size = max(1, args.batch // args.path_batch_shrink)
+        #
+        #     fake_img, latents = generator(degraded_img, return_latents=True)
+        #
+        #     path_loss, mean_path_length, path_lengths = g_path_regularize(
+        #         fake_img, latents, mean_path_length
+        #     )
+        #
+        #     generator.zero_grad()
+        #     weighted_path_loss = args.path_regularize * args.g_reg_every * path_loss
+        #
+        #     if args.path_batch_shrink:
+        #         weighted_path_loss += 0 * fake_img[0, 0, 0, 0]
+        #
+        #     weighted_path_loss.backward()
+        #
+        #     g_optim.step()
+        #
+        #     mean_path_length_avg = (
+        #         reduce_sum(mean_path_length).item() / get_world_size()
+        #     )
+        #
+        # loss_dict['path'] = path_loss
+        # loss_dict['path_length'] = path_lengths.mean()
+        #
+        # accumulate(g_ema, g_module, accum)
+        #
+        # loss_reduced = reduce_loss_dict(loss_dict)
+        #
+        # d_loss_val = loss_reduced['d'].mean().item()
+        # g_loss_val = loss_reduced['g'].mean().item()
+        # r1_val = loss_reduced['r1'].mean().item()
+        # path_loss_val = loss_reduced['path'].mean().item()
+        # real_score_val = loss_reduced['real_score'].mean().item()
+        # fake_score_val = loss_reduced['fake_score'].mean().item()
+        # path_length_val = loss_reduced['path_length'].mean().item()
+        #
+        # if get_rank() == 0:
+        #     pbar.set_description(
+        #         (
+        #             f'd: {d_loss_val:.4f}; g: {g_loss_val:.4f}; r1: {r1_val:.4f}; '
+        #         )
+        #     )
+        #
+        #     if i % args.save_freq == 0:
+        #         with torch.no_grad():
+        #             g_ema.eval()
+        #             sample, _ = g_ema(degraded_img)
+        #             sample = torch.cat((degraded_img, sample, real_img), 0)
+        #             utils.save_image(
+        #                 sample,
+        #                 f'{args.sample}/{str(i).zfill(6)}.png',
+        #                 nrow=args.batch,
+        #                 normalize=True,
+        #                 range=(-1, 1),
+        #             )
+        #
+        #         lpips_value = validation(g_ema, lpips_func, args, device)
+        #         print(f'{i}/{args.iter}: lpips: {lpips_value.cpu().numpy()[0][0][0][0]}')
+        #
+        #     if i and i % args.save_freq == 0:
+        #         torch.save(
+        #             {
+        #                 'g': g_module.state_dict(),
+        #                 'd': d_module.state_dict(),
+        #                 'g_ema': g_ema.state_dict(),
+        #                 'g_optim': g_optim.state_dict(),
+        #                 'd_optim': d_optim.state_dict(),
+        #             },
+        #             f'{args.ckpt}/{str(i).zfill(6)}.pth',
+        #         )
 
-        d_regularize = i % args.d_reg_every == 0
 
-        if d_regularize:
-            real_img.requires_grad = True
-            real_pred = discriminator(real_img)
-            r1_loss = d_r1_loss(real_pred, real_img)
 
-            discriminator.zero_grad()
-            (args.r1 / 2 * r1_loss * args.d_reg_every + 0 * real_pred[0]).backward()
+# CUDA_VISIBLE_DEVICES='0,1,2,3'
+# python -m torch.distributed.launch --nproc_per_node=4 --master_port=4321
+# train_simple.py
+# --size 1024
+# --channel_multiplier 2
+# --narrow 1
+# --ckpt weights
+# --sample results
+# --batch 2
+# --path your_path_of_croped+aligned_hq_faces (e.g., FFHQ)
+# ваш путь обрезанных+выровненных лиц hq (например, FFHQ)
 
-            d_optim.step()
-
-        loss_dict['r1'] = r1_loss
-
-        requires_grad(generator, True)
-        requires_grad(discriminator, False)
-
-        fake_img, _ = generator(degraded_img)
-        fake_pred = discriminator(fake_img)
-        g_loss = g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img)
-
-        loss_dict['g'] = g_loss
-
-        generator.zero_grad()
-        g_loss.backward()
-        g_optim.step()
-
-        g_regularize = i % args.g_reg_every == 0
-
-        if g_regularize:
-            path_batch_size = max(1, args.batch // args.path_batch_shrink)
-
-            fake_img, latents = generator(degraded_img, return_latents=True)
-
-            path_loss, mean_path_length, path_lengths = g_path_regularize(
-                fake_img, latents, mean_path_length
-            )
-
-            generator.zero_grad()
-            weighted_path_loss = args.path_regularize * args.g_reg_every * path_loss
-
-            if args.path_batch_shrink:
-                weighted_path_loss += 0 * fake_img[0, 0, 0, 0]
-
-            weighted_path_loss.backward()
-
-            g_optim.step()
-
-            mean_path_length_avg = (
-                reduce_sum(mean_path_length).item() / get_world_size()
-            )
-
-        loss_dict['path'] = path_loss
-        loss_dict['path_length'] = path_lengths.mean()
-
-        accumulate(g_ema, g_module, accum)
-
-        loss_reduced = reduce_loss_dict(loss_dict)
-
-        d_loss_val = loss_reduced['d'].mean().item()
-        g_loss_val = loss_reduced['g'].mean().item()
-        r1_val = loss_reduced['r1'].mean().item()
-        path_loss_val = loss_reduced['path'].mean().item()
-        real_score_val = loss_reduced['real_score'].mean().item()
-        fake_score_val = loss_reduced['fake_score'].mean().item()
-        path_length_val = loss_reduced['path_length'].mean().item()
-
-        if get_rank() == 0:
-            pbar.set_description(
-                (
-                    f'd: {d_loss_val:.4f}; g: {g_loss_val:.4f}; r1: {r1_val:.4f}; '
-                )
-            )
-            
-            if i % args.save_freq == 0:
-                with torch.no_grad():
-                    g_ema.eval()
-                    sample, _ = g_ema(degraded_img)
-                    sample = torch.cat((degraded_img, sample, real_img), 0) 
-                    utils.save_image(
-                        sample,
-                        f'{args.sample}/{str(i).zfill(6)}.png',
-                        nrow=args.batch,
-                        normalize=True,
-                        range=(-1, 1),
-                    )
-
-                lpips_value = validation(g_ema, lpips_func, args, device)
-                print(f'{i}/{args.iter}: lpips: {lpips_value.cpu().numpy()[0][0][0][0]}')
-
-            if i and i % args.save_freq == 0:
-                torch.save(
-                    {
-                        'g': g_module.state_dict(),
-                        'd': d_module.state_dict(),
-                        'g_ema': g_ema.state_dict(),
-                        'g_optim': g_optim.state_dict(),
-                        'd_optim': d_optim.state_dict(),
-                    },
-                    f'{args.ckpt}/{str(i).zfill(6)}.pth',
-                )
 
 
 if __name__ == '__main__':
@@ -301,18 +337,20 @@ if __name__ == '__main__':
     print("PARSER")
     # Заглушка
     # parser.add_argument('--path', type=str, required=True)
-    parser.add_argument('--path', type=str, default='test')
+    # path your_path_of_croped+aligned_hq_faces
+    parser.add_argument('--path', type=str, default='examples/ffhq-10')
 
     parser.add_argument('--base_dir', type=str, default='./')
-
-    parser.add_argument('--iter', type=int, default=4000000)
-
+    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    parser.add_argument('--iter', type=int, default=1)
+    # parser.add_argument('--iter', type=int, default=4000000)
+    # batch 2
     parser.add_argument('--batch', type=int, default=4)
-
+    # size 1024
     parser.add_argument('--size', type=int, default=256)
-
+    # channel_multiplier 2
     parser.add_argument('--channel_multiplier', type=int, default=2)
-
+    # narrow 1
     parser.add_argument('--narrow', type=float, default=1.0)
 
     parser.add_argument('--r1', type=float, default=10)
@@ -330,11 +368,11 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=0.002)
 
     parser.add_argument('--local_rank', type=int, default=0)
-
+    # ckpt weights
     parser.add_argument('--ckpt', type=str, default='ckpts')
 
     parser.add_argument('--pretrain', type=str, default=None)
-
+    # sample results
     parser.add_argument('--sample', type=str, default='sample')
 
     parser.add_argument('--val_dir', type=str, default='val')
@@ -366,7 +404,8 @@ if __name__ == '__main__':
 
     # Не ясно для чего
     args.latent = 512
-    # Неуверен, думаю количество потоков для мультипроцессинга
+    # number of multi-layer perception layers
+    # количество слоев многослойного восприятия
     args.n_mlp = 8
 
     # Стартовая итерация
@@ -385,9 +424,9 @@ if __name__ == '__main__':
     ).to(device)
     # # Разобрать !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     # # Дискриминатор
-    # discriminator = Discriminator(
-    #     args.size, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
-    # ).to(device)
+    discriminator = Discriminator(
+        args.size, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
+    ).to(device)
     # g_ema = FullGenerator(
     #     args.size, args.latent, args.n_mlp, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
     # ).to(device)
@@ -447,13 +486,15 @@ if __name__ == '__main__':
     #         broadcast_buffers=False,
     #     )
     #
-    # dataset = FaceDataset(args.path, args.size)
-    # loader = data.DataLoader(
-    #     dataset,
-    #     batch_size=args.batch,
-    #     sampler=data_sampler(dataset, shuffle=True, distributed=args.distributed),
-    #     drop_last=True,
-    # )
-    #
+    dataset = FaceDataset(args.path, args.size)
+    loader = data.DataLoader(
+        dataset,
+        batch_size=args.batch,
+        sampler=data_sampler(dataset, shuffle=True, distributed=args.distributed),
+        drop_last=True,
+    )
+
     # train(args, loader, generator, discriminator, [smooth_l1_loss, id_loss], g_optim, d_optim, g_ema, lpips_func, device)
-   
+
+    # train(args, loader, device)
+    train(args, loader, generator, discriminator, device)

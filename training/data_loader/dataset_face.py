@@ -73,10 +73,13 @@ class GFPGAN_degradation(object):
 
 class FaceDataset(Dataset):
     def __init__(self, path, resolution=512):
+        print("--------------------------------------------INIT FaceDataset-------------------------------------------")
         self.resolution = resolution
-
+        print("resolution =", resolution)
         self.HQ_imgs = glob.glob(os.path.join(path, '*.*'))
+        print("HQ_imgs =", glob.glob(os.path.join(path, '*.*')))
         self.length = len(self.HQ_imgs)
+        print("length =", len(self.HQ_imgs))
 
         self.degrader = GFPGAN_degradation()
 
@@ -84,9 +87,21 @@ class FaceDataset(Dataset):
         return self.length
 
     def __getitem__(self, index):
+
+        # print("FaceDataset __getitem__ index =", index)
+
+
         img_gt = cv2.imread(self.HQ_imgs[index], cv2.IMREAD_COLOR)
+
+
+        # print("1 img_gt", img_gt.shape)
+
+        # Изменяет разрешение
         img_gt = cv2.resize(img_gt, (self.resolution, self.resolution), interpolation=cv2.INTER_AREA)
-        
+
+        # print("2 img_gt", img_gt.shape)
+
+
         # BFR degradation
         # We adopt the degradation of GFPGAN for simplicity, which however differs from our implementation in the paper.
         # Data degradation plays a key role in BFR. Please replace it with your own methods.
@@ -99,5 +114,6 @@ class FaceDataset(Dataset):
         img_gt = img_gt.permute(2, 0, 1).flip(0) # BGR->RGB
         img_lq = img_lq.permute(2, 0, 1).flip(0) # BGR->RGB
 
+        # print("3 img_gt", img_gt.shape)
         return img_lq, img_gt
 
