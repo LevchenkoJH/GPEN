@@ -18,8 +18,13 @@ class IDLoss(nn.Module):
     def extract_feats(self, x):
         _, _, h, w = x.shape
         assert h==w
-        ss = h//256
-        x = x[:, :, 35*ss:-33*ss, 32*ss:-36*ss]  # Crop interesting region
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # ss = h//256
+        ss = h // 64
+        # print("ss ->", ss)
+        x = x[:, :, 19 * ss:-17 * ss, 16 * ss:-20 * ss]
+        # x = x[:, :, 35*ss:-33*ss, 32*ss:-36*ss]  # Crop interesting region
+        # print("ss return", x.shape)
         x = self.face_pool(x)
         x_feats = self.facenet(x)
         return x_feats

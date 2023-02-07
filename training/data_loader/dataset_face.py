@@ -14,6 +14,17 @@ import degradations
 class GFPGAN_degradation(object):
     def __init__(self):
         self.kernel_list = ['iso', 'aniso']
+        # self.kernel_prob = [0.5, 0.5]
+        # self.blur_kernel_size = 41
+        # self.blur_sigma = [0.1, 10]
+        # self.downsample_range = [0.8, 8]
+        # self.noise_range = [0, 20]
+        # self.jpeg_range = [60, 100]
+        # self.gray_prob = 0.2
+        # self.color_jitter_prob = 0.0
+        # self.color_jitter_pt_prob = 0.0
+        # self.shift = 20/255.
+
         self.kernel_prob = [0.5, 0.5]
         self.blur_kernel_size = 41
         self.blur_sigma = [0.1, 10]
@@ -23,7 +34,7 @@ class GFPGAN_degradation(object):
         self.gray_prob = 0.2
         self.color_jitter_prob = 0.0
         self.color_jitter_pt_prob = 0.0
-        self.shift = 20/255.
+        self.shift = 20 / 255.
     
     def degrade_process(self, img_gt):
         if random.random() > 0.5:
@@ -106,6 +117,8 @@ class FaceDataset(Dataset):
         # We adopt the degradation of GFPGAN for simplicity, which however differs from our implementation in the paper.
         # Data degradation plays a key role in BFR. Please replace it with your own methods.
         img_gt = img_gt.astype(np.float32)/255.
+        #~~~~~~
+        # img_lq = img_gt.copy()
         img_gt, img_lq = self.degrader.degrade_process(img_gt)
 
         img_gt =  (torch.from_numpy(img_gt) - 0.5) / 0.5

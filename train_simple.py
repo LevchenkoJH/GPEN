@@ -86,7 +86,7 @@ def d_r1_loss(real_pred, real_img):
 
 def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=None, input_img=None):
     smooth_l1_loss, id_loss = loss_funcs
-    
+
     loss = F.softplus(-fake_pred).mean()
     loss_l1 = smooth_l1_loss(fake_img, real_img)
     loss_id, __, __ = id_loss(fake_img, real_img, input_img)
@@ -135,12 +135,9 @@ def validation(model, lpips_func, args, device):
     return dist_sum.data/len(lq_files)
 
 
-# def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_ema, lpips_func, device):
-# def train(args, loader,  device):
-def train(args, loader, generator, discriminator, device):
-
-
+def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_ema, lpips_func, device):
     print("--------------------------------------------TRAIN-------------------------------------------")
+    # print(torch.cuda.memory_summary(device=device, abbreviated=False))
 
     loader = sample_data(loader)
 
@@ -159,13 +156,13 @@ def train(args, loader, generator, discriminator, device):
     mean_path_length_avg = 0
     loss_dict = {}
 
-    # if args.distributed:
-    #     g_module = generator.module
-    #     d_module = discriminator.module
-    #
-    # else:
-    #     g_module = generator
-    #     d_module = discriminator
+    if args.distributed:
+        g_module = generator.module
+        d_module = discriminator.module
+
+    else:
+        g_module = generator
+        d_module = discriminator
  
     accum = 0.5 ** (32 / (10 * 1000))
 
@@ -181,27 +178,29 @@ def train(args, loader, generator, discriminator, device):
         # [4, 3, 256, 256] - сейчас
         # [4, 2, 3, 256, 256] - нужно теперь
         degraded_img, real_img = next(loader)
-        print("deg", degraded_img.shape)
-        print("real", real_img.shape)
+        # print("deg", degraded_img.shape)
+        # print("real", real_img.shape)
 
         degraded_img = degraded_img.to(device)
         real_img = real_img.to(device)
 
+        # Сначала градиент касается только дискриминатора
         requires_grad(generator, False)
         requires_grad(discriminator, True)
 
         # Второе None
         fake_img, _ = generator(degraded_img)
 
-        print("generator (fake_img) ->", fake_img.shape)
+        # print("generator (fake_img) ->", fake_img.shape)
         fake_pred = discriminator(fake_img)
-        print("discriminator (fake_pred) ->", fake_pred.shape)
+        # print("discriminator (fake_pred) ->", fake_pred.shape)
 
         real_pred = discriminator(real_img)
-        print("discriminator (real_pred) ->", type(real_pred))
+        # print("discriminator (real_pred) ->", type(real_pred))
 
+        # loss дискриминатора
         d_loss = d_logistic_loss(real_pred, fake_pred)
-        print("d_logistic_loss", d_loss)
+        # print("d_logistic_loss", d_loss)
 
         loss_dict['d'] = d_loss
         loss_dict['real_score'] = real_pred.mean()
@@ -210,108 +209,120 @@ def train(args, loader, generator, discriminator, device):
         discriminator.zero_grad()
         d_loss.backward()
         d_optim.step()
-        #
-        # d_regularize = i % args.d_reg_every == 0
-        #
-        # if d_regularize:
-        #     real_img.requires_grad = True
-        #     real_pred = discriminator(real_img)
-        #     r1_loss = d_r1_loss(real_pred, real_img)
-        #
-        #     discriminator.zero_grad()
-        #     (args.r1 / 2 * r1_loss * args.d_reg_every + 0 * real_pred[0]).backward()
-        #
-        #     d_optim.step()
-        #
-        # loss_dict['r1'] = r1_loss
-        #
-        # requires_grad(generator, True)
-        # requires_grad(discriminator, False)
-        #
-        # fake_img, _ = generator(degraded_img)
-        # fake_pred = discriminator(fake_img)
-        # g_loss = g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img)
-        #
-        # loss_dict['g'] = g_loss
-        #
-        # generator.zero_grad()
-        # g_loss.backward()
-        # g_optim.step()
-        #
-        # g_regularize = i % args.g_reg_every == 0
-        #
-        # if g_regularize:
-        #     path_batch_size = max(1, args.batch // args.path_batch_shrink)
-        #
-        #     fake_img, latents = generator(degraded_img, return_latents=True)
-        #
-        #     path_loss, mean_path_length, path_lengths = g_path_regularize(
-        #         fake_img, latents, mean_path_length
-        #     )
-        #
-        #     generator.zero_grad()
-        #     weighted_path_loss = args.path_regularize * args.g_reg_every * path_loss
-        #
-        #     if args.path_batch_shrink:
-        #         weighted_path_loss += 0 * fake_img[0, 0, 0, 0]
-        #
-        #     weighted_path_loss.backward()
-        #
-        #     g_optim.step()
-        #
-        #     mean_path_length_avg = (
-        #         reduce_sum(mean_path_length).item() / get_world_size()
-        #     )
-        #
-        # loss_dict['path'] = path_loss
-        # loss_dict['path_length'] = path_lengths.mean()
-        #
-        # accumulate(g_ema, g_module, accum)
-        #
-        # loss_reduced = reduce_loss_dict(loss_dict)
-        #
-        # d_loss_val = loss_reduced['d'].mean().item()
-        # g_loss_val = loss_reduced['g'].mean().item()
-        # r1_val = loss_reduced['r1'].mean().item()
-        # path_loss_val = loss_reduced['path'].mean().item()
-        # real_score_val = loss_reduced['real_score'].mean().item()
-        # fake_score_val = loss_reduced['fake_score'].mean().item()
-        # path_length_val = loss_reduced['path_length'].mean().item()
-        #
-        # if get_rank() == 0:
-        #     pbar.set_description(
-        #         (
-        #             f'd: {d_loss_val:.4f}; g: {g_loss_val:.4f}; r1: {r1_val:.4f}; '
-        #         )
-        #     )
-        #
-        #     if i % args.save_freq == 0:
-        #         with torch.no_grad():
-        #             g_ema.eval()
-        #             sample, _ = g_ema(degraded_img)
-        #             sample = torch.cat((degraded_img, sample, real_img), 0)
-        #             utils.save_image(
-        #                 sample,
-        #                 f'{args.sample}/{str(i).zfill(6)}.png',
-        #                 nrow=args.batch,
-        #                 normalize=True,
-        #                 range=(-1, 1),
-        #             )
-        #
-        #         lpips_value = validation(g_ema, lpips_func, args, device)
-        #         print(f'{i}/{args.iter}: lpips: {lpips_value.cpu().numpy()[0][0][0][0]}')
-        #
-        #     if i and i % args.save_freq == 0:
-        #         torch.save(
-        #             {
-        #                 'g': g_module.state_dict(),
-        #                 'd': d_module.state_dict(),
-        #                 'g_ema': g_ema.state_dict(),
-        #                 'g_optim': g_optim.state_dict(),
-        #                 'd_optim': d_optim.state_dict(),
-        #             },
-        #             f'{args.ckpt}/{str(i).zfill(6)}.pth',
-        #         )
+
+        d_regularize = i % args.d_reg_every == 0
+
+        # Регуляризация каждые 16 итераций
+        if d_regularize:
+            real_img.requires_grad = True
+            real_pred = discriminator(real_img)
+            r1_loss = d_r1_loss(real_pred, real_img)
+
+            discriminator.zero_grad()
+            (args.r1 / 2 * r1_loss * args.d_reg_every + 0 * real_pred[0]).backward()
+
+            d_optim.step()
+
+        # loss регуляризации
+        loss_dict['r1'] = r1_loss
+
+        # Теперь градиент касается только генератора
+        requires_grad(generator, True)
+        requires_grad(discriminator, False)
+
+        fake_img, _ = generator(degraded_img)
+        # print("generator (fake_img) ->", fake_img.shape)
+        fake_pred = discriminator(fake_img)
+        # print("discriminator (fake_pred) ->", fake_pred.shape)
+        # loss генератора
+        # print("In", fake_pred.shape, fake_img.shape, real_img.shape, degraded_img.shape)
+        g_loss = g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img)
+
+        loss_dict['g'] = g_loss
+
+        generator.zero_grad()
+        g_loss.backward()
+        g_optim.step()
+
+        g_regularize = i % args.g_reg_every == 0
+
+        if g_regularize:
+            path_batch_size = max(1, args.batch // args.path_batch_shrink)
+
+            fake_img, latents = generator(degraded_img, return_latents=True)
+
+            path_loss, mean_path_length, path_lengths = g_path_regularize(
+                fake_img, latents, mean_path_length
+            )
+
+            generator.zero_grad()
+            weighted_path_loss = args.path_regularize * args.g_reg_every * path_loss
+
+            if args.path_batch_shrink:
+                weighted_path_loss += 0 * fake_img[0, 0, 0, 0]
+
+            weighted_path_loss.backward()
+
+            g_optim.step()
+
+            mean_path_length_avg = (
+                reduce_sum(mean_path_length).item() / get_world_size()
+            )
+
+        loss_dict['path'] = path_loss
+        loss_dict['path_length'] = path_lengths.mean()
+
+        accumulate(g_ema, g_module, accum)
+
+        loss_reduced = reduce_loss_dict(loss_dict)
+
+        d_loss_val = loss_reduced['d'].mean().item()
+        g_loss_val = loss_reduced['g'].mean().item()
+        r1_val = loss_reduced['r1'].mean().item()
+        path_loss_val = loss_reduced['path'].mean().item()
+        # print("path_loss_val =", path_loss_val)
+        real_score_val = loss_reduced['real_score'].mean().item()
+        fake_score_val = loss_reduced['fake_score'].mean().item()
+        path_length_val = loss_reduced['path_length'].mean().item()
+
+        # print("get_rank() ->", get_rank())
+        if get_rank() == 0:
+            pbar.set_description(
+                (
+                    f'd: {d_loss_val:.4f}; g: {g_loss_val:.4f}; r1: {r1_val:.4f}; '
+                )
+            )
+
+            if i % (args.save_freq // 100) == 0:
+
+                with torch.no_grad():
+                    g_ema.eval()
+                    sample, _ = g_ema(degraded_img)
+                    # print("SAMPLE 1", sample.shape)
+                    sample = torch.cat((degraded_img, sample, real_img), 0)
+                    # print("SAMPLE 2", sample.shape)
+                    utils.save_image(
+                        sample,
+                        f'{args.sample}/{str(i).zfill(6)}.png',
+                        nrow=args.batch,
+                        normalize=True,
+                        range=(-1, 1),
+                    )
+
+                lpips_value = validation(g_ema, lpips_func, args, device)
+                print(f'{i}/{args.iter}: lpips: {lpips_value.cpu().numpy()[0][0][0][0]}')
+
+            if i and i % args.save_freq == 0:
+                torch.save(
+                    {
+                        'g': g_module.state_dict(),
+                        'd': d_module.state_dict(),
+                        'g_ema': g_ema.state_dict(),
+                        'g_optim': g_optim.state_dict(),
+                        'd_optim': d_optim.state_dict(),
+                    },
+                    f'{args.ckpt}/{str(i).zfill(6)}.pth',
+                )
 
 
 
@@ -342,29 +353,36 @@ if __name__ == '__main__':
 
     parser.add_argument('--base_dir', type=str, default='./')
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    parser.add_argument('--iter', type=int, default=1)
+    parser.add_argument('--iter', type=int, default=10000)
     # parser.add_argument('--iter', type=int, default=4000000)
     # batch 2
-    parser.add_argument('--batch', type=int, default=4)
+    # parser.add_argument('--batch', type=int, default=4)
+    parser.add_argument('--batch', type=int, default=2)
     # size 1024
-    parser.add_argument('--size', type=int, default=256)
+    # Из-за id_loss минимальный размер по задумке 256
+    # Из-за нехватки памяти вынужден переделать id_loss и поставить 64
+    # parser.add_argument('--size', type=int, default=256)
+    parser.add_argument('--size', type=int, default=64)
     # channel_multiplier 2
-    parser.add_argument('--channel_multiplier', type=int, default=2)
+    # Из-за нехватки памяти 1
+    # parser.add_argument('--channel_multiplier', type=int, default=2)
+    parser.add_argument('--channel_multiplier', type=int, default=1)
     # narrow 1
     parser.add_argument('--narrow', type=float, default=1.0)
 
     parser.add_argument('--r1', type=float, default=10)
 
     parser.add_argument('--path_regularize', type=float, default=2)
-
+    # Для регуляризации генератора
     parser.add_argument('--path_batch_shrink', type=int, default=2)
-
+    # На какой итерации производится регуляризации дискриминатора
     parser.add_argument('--d_reg_every', type=int, default=16)
-
+    # Параметр для оптимизатора / На какой итерации производится регуляризации генератора
     parser.add_argument('--g_reg_every', type=int, default=4)
-
-    parser.add_argument('--save_freq', type=int, default=10000)
-
+    # Логирование в виде изображений и сохранение весов раз в 10000 итераций
+    # parser.add_argument('--save_freq', type=int, default=10000)
+    parser.add_argument('--save_freq', type=int, default=1000)
+    # Параметр для оптимизатора
     parser.add_argument('--lr', type=float, default=0.002)
 
     parser.add_argument('--local_rank', type=int, default=0)
@@ -419,35 +437,40 @@ if __name__ == '__main__':
     # args.n_mlp = 8
     # ('--channel_multiplier', type=int, default=2)
     # ('--narrow', type=float, default=1.0)
+    # print(torch.cuda.memory_summary(device=device, abbreviated=False))
     generator = FullGenerator(
         args.size, args.latent, args.n_mlp, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
     ).to(device)
     # # Разобрать !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     # # Дискриминатор
+    # print(torch.cuda.memory_summary(device=device, abbreviated=False))
     discriminator = Discriminator(
         args.size, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
     ).to(device)
-    # g_ema = FullGenerator(
-    #     args.size, args.latent, args.n_mlp, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
-    # ).to(device)
+    g_ema = FullGenerator(
+        args.size, args.latent, args.n_mlp, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
+    ).to(device)
     # g_ema.eval()
     # accumulate(g_ema, generator, 0)
     #
-    # g_reg_ratio = args.g_reg_every / (args.g_reg_every + 1)
-    # d_reg_ratio = args.d_reg_every / (args.d_reg_every + 1)
-    #
-    # g_optim = optim.Adam(
-    #     generator.parameters(),
-    #     lr=args.lr * g_reg_ratio,
-    #     betas=(0 ** g_reg_ratio, 0.99 ** g_reg_ratio),
-    # )
-    #
-    # d_optim = optim.Adam(
-    #     discriminator.parameters(),
-    #     lr=args.lr * d_reg_ratio,
-    #     betas=(0 ** d_reg_ratio, 0.99 ** d_reg_ratio),
-    # )
-    #
+    g_reg_ratio = args.g_reg_every / (args.g_reg_every + 1)
+    d_reg_ratio = args.d_reg_every / (args.d_reg_every + 1)
+
+    g_optim = optim.Adam(
+        generator.parameters(),
+        lr=args.lr * g_reg_ratio,
+        betas=(0 ** g_reg_ratio, 0.99 ** g_reg_ratio),
+    )
+
+    d_optim = optim.Adam(
+        discriminator.parameters(),
+        lr=args.lr * d_reg_ratio,
+        betas=(0 ** d_reg_ratio, 0.99 ** d_reg_ratio),
+    )
+
+
+    # Если модель обучалась ранее
+    # Пока нет необходимости
     # if args.pretrain is not None:
     #     print('load model:', args.pretrain)
     #
@@ -459,10 +482,11 @@ if __name__ == '__main__':
     #
     #     g_optim.load_state_dict(ckpt['g_optim'])
     #     d_optim.load_state_dict(ckpt['d_optim'])
-    #
-    # smooth_l1_loss = torch.nn.SmoothL1Loss().to(device)
-    # id_loss = IDLoss(args.base_dir, device, ckpt_dict=None)
-    # lpips_func = lpips.LPIPS(net='alex',version='0.1').to(device)
+
+    smooth_l1_loss = torch.nn.SmoothL1Loss().to(device)
+    id_loss = IDLoss(args.base_dir, device, ckpt_dict=None)
+
+    lpips_func = lpips.LPIPS(net='alex',version='0.1').to(device)
     #
     # if args.distributed:
     #     generator = nn.parallel.DistributedDataParallel(
@@ -494,7 +518,4 @@ if __name__ == '__main__':
         drop_last=True,
     )
 
-    # train(args, loader, generator, discriminator, [smooth_l1_loss, id_loss], g_optim, d_optim, g_ema, lpips_func, device)
-
-    # train(args, loader, device)
-    train(args, loader, generator, discriminator, device)
+    train(args, loader, generator, discriminator, [smooth_l1_loss, id_loss], g_optim, d_optim, g_ema, lpips_func, device)
