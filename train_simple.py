@@ -406,7 +406,7 @@ if __name__ == '__main__':
     os.makedirs(args.sample, exist_ok=True)
 
     # Попробовать использовать 'cpu' в место 'cuda'
-    device = 'cuda'
+    device = 'cpu'
 
     # Скорее всего имеется в виду количество видеокарт
     n_gpu = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
