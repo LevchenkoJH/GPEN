@@ -401,8 +401,10 @@ if __name__ == '__main__':
     # Выяснить для чего создаются эти директории
 
     # default='ckpts'
+    # Папка для бекапа весов
     os.makedirs(args.ckpt, exist_ok=True)
     # default = 'sample'
+    # Папка для логирования работы сети в виде изображений
     os.makedirs(args.sample, exist_ok=True)
 
     # Попробовать использовать 'cpu' в место 'cuda'

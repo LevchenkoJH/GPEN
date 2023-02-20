@@ -703,17 +703,74 @@ class FullGenerator(nn.Module):
         for i in range(self.log_size-1):
             # Получаем слой
             ecd = getattr(self, self.names[i])
+
+            # Проверить размерности входа выхода каждого слоя
+
+            # SLOY 0
+            # DO
+            # torch.Size([2, 3, 64, 64])
+            # POSLE
+            # torch.Size([2, 256, 64, 64])
+            # SLOY 1
+            # DO
+            # torch.Size([2, 256, 64, 64])
+            # POSLE
+            # torch.Size([2, 512, 32, 32])
+            # SLOY 2
+            # DO
+            # torch.Size([2, 512, 32, 32])
+            # POSLE
+            # torch.Size([2, 512, 16, 16])
+            # SLOY 3
+            # DO
+            # torch.Size([2, 512, 16, 16])
+            # POSLE
+            # torch.Size([2, 512, 8, 8])
+            # SLOY 4
+            # DO
+            # torch.Size([2, 512, 8, 8])
+            # POSLE
+            # torch.Size([2, 512, 4, 4])
+            # print("SLOY", i)
+            # print("DO", inputs.shape)
             # Получаем его выход
             inputs = ecd(inputs)
+            # print("POSLE", inputs.shape)
+
+
+
+
+
             # В шум отправляется выход каждого слоя
+            # print("IN NOISE", inputs.shape)
             noise.append(inputs)
-            #print(inputs.shape)
+            # print("INPUTS SHAPE", noise)
+
+
+
+
+
         # Возвращает новый тензор с теми же данными, что и self-тензор, но с другим shape.
         # Изменение размера тентора, для чего - не ясно
+
+        # DO
+        # torch.Size([2, 512, 4, 4])
+        # POSLE
+        # torch.Size([2, 8192])
+
+        # print("DO", inputs.shape)
         inputs = inputs.view(inputs.shape[0], -1)
+        # print("POSLE", inputs.shape)
+
+
         # Последний уже линейный слой
+        # POSLE
+        # LINEYNOGO
+        # torch.Size([2, 512])
         outs = self.final_linear(inputs)
-        #print(outs.shape)
+        # print("POSLE LINEYNOGO", outs.shape)
+
+
         # Не уверен
         # repeat(10, 3) --> 10 10 10
         # chained = chain.from_iterable(('ab', [33]))
@@ -722,7 +779,15 @@ class FullGenerator(nn.Module):
         #     next(chained)  # 33
         # Способ обхода цикла
         # Получение шума для генератора
+
+        # Для примера
+        # Было
+        # noise = [[1, 2, 3], [4, 5], [6]]
         noise = list(itertools.chain.from_iterable(itertools.repeat(x, 2) for x in noise))[::-1]
+        # Стало
+        # [[6], [6], [4, 5], [4, 5], [1, 2, 3], [1, 2, 3]]
+
+
         # Шум и выход отправляются в генератор
         # Шум формируется на основании промежуточных выходов сверточных слоев
         outs = self.generator([outs], return_latents, inject_index, truncation, truncation_latent, input_is_latent, noise=noise[1:])
