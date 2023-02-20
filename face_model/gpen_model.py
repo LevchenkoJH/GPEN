@@ -487,6 +487,7 @@ class Generator(nn.Module):
     def get_latent(self, input):
         return self.style(input)
 
+    # outs = self.generator([outs], return_latents, inject_index, truncation, truncation_latent, input_is_latent, noise=noise[1:])
     def forward(
         self,
         styles,
@@ -497,8 +498,17 @@ class Generator(nn.Module):
         input_is_latent=False,
         noise=None,
     ):
+
+        # torch.Size([2, 512])
+        # noise -> 9
+        # print("styles ->", styles[0].shape)
+        # print("noise ->", len(noise))
+
+        # input_is_latent -> False
+        # print("input_is_latent ->", input_is_latent)
         if not input_is_latent:
             styles = [self.style(s) for s in styles]
+
 
         if noise is None:
             '''
@@ -509,7 +519,9 @@ class Generator(nn.Module):
             for i in range(self.n_mlp + 1):
                 size = 2 ** (i+2)
                 noise.append(torch.randn(batch, self.channels[size], size, size, device=styles[0].device))
-            
+
+        # truncation -> 1
+        # print("truncation ->", truncation)
         if truncation < 1:
             style_t = []
 
@@ -520,7 +532,11 @@ class Generator(nn.Module):
 
             styles = style_t
 
+        # len(styles) 1
+        # print("len(styles)", len(styles))
         if len(styles) < 2:
+            # self.n_latent -> 10
+            # print("self.n_latent ->", self.n_latent)
             inject_index = self.n_latent
 
             latent = styles[0].unsqueeze(1).repeat(1, inject_index, 1)
@@ -535,7 +551,17 @@ class Generator(nn.Module):
             latent = torch.cat([latent, latent2], 1)
 
         out = self.input(latent)
+
+        # DO
+        # torch.Size([2, 512, 4, 4])
+        # torch.Size([2, 512, 4, 4])
+        # POSLE
+        # torch.Size([2, 1024, 4, 4])
+        # torch.Size([2, 512, 4, 4])
+        # print("DO", out.shape, noise[0].shape)
         out = self.conv1(out, latent[:, 0], noise=noise[0])
+        # print("POSLE", out.shape, noise[0].shape)
+
 
         skip = self.to_rgb1(out, latent[:, 1])
 
@@ -661,12 +687,25 @@ class FullGenerator(nn.Module):
             2048: int(8 * channel_multiplier * narrow) # 16
         }
 
+        # log_size -> 6
         self.log_size = int(math.log(size, 2))
+        # print("log_size ->", self.log_size)
+
         # print(self.log_size)
         # Разобрать!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         self.generator = Generator(size, style_dim, n_mlp, channel_multiplier=channel_multiplier, blur_kernel=blur_kernel, lr_mlp=lr_mlp, isconcat=isconcat, narrow=narrow, device=device)
 
         # Разобрать!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        # ПОПРОБУЕМ ДОБАВИТЬ ЗДЕСЬ
+        # Нужен один слой конволюции
+        # От [2, 6, 64, 64] перейти к
+        # [2, 3, 64, 64]
+        self.MY_NEW_CONV = ConvLayer(3, 3, 1, device=device)
+
+
+
+
         # Первая свертка задается отдельно
         # in_channel = 3, скорее всего из-за RGB
         # out_channel = channels[size] (128),
@@ -697,6 +736,11 @@ class FullGenerator(nn.Module):
         truncation_latent=None,
         input_is_latent=False,
     ):
+
+
+
+
+
         # Для чего шум - не ясно
         noise = []
         # Проходим по сверточным слоям
