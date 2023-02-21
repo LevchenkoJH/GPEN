@@ -69,6 +69,21 @@ def sample_data(loader):
 
 
 def d_logistic_loss(real_pred, fake_pred):
+    print("--------------------------------------------d_logistic_loss-------------------------------------------")
+    # real_pred
+    # tensor([[0.3418],
+    #         [0.7029]], grad_fn= < AddmmBackward0 >)
+    # fake_pred
+    # tensor([[0.8380],
+    #         [0.5778]], grad_fn= < AddmmBackward0 >)
+
+    # real_pred -> torch.Size([2, 1])
+    # fake_pred -> torch.Size([2, 1])
+
+    # Большое сходство с La из статьи
+
+    print("real_pred ->", real_pred.shape)
+    print("fake_pred ->", fake_pred.shape)
     real_loss = F.softplus(-real_pred)
     fake_loss = F.softplus(fake_pred)
 
@@ -76,6 +91,16 @@ def d_logistic_loss(real_pred, fake_pred):
 
 
 def d_r1_loss(real_pred, real_img):
+    print("--------------------------------------------d_r1_loss-------------------------------------------")
+
+    # real_pred -> torch.Size([2, 1])
+    # real_img -> torch.Size([2, 3, 64, 64])
+
+    print("real_pred ->", real_pred.shape)
+    print("real_img ->", real_img.shape)
+
+    # https://arxiv.org/pdf/1801.04406.pdf
+
     grad_real, = autograd.grad(
         outputs=real_pred.sum(), inputs=real_img, create_graph=True
     )
@@ -83,13 +108,36 @@ def d_r1_loss(real_pred, real_img):
 
     return grad_penalty
 
-
+# g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img)
 def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=None, input_img=None):
+    print("--------------------------------------------g_nonsaturating_loss-------------------------------------------")
+    # fake_pred -> torch.Size([2, 1])
+    # fake_img -> torch.Size([2, 3, 64, 64])
+    # real_img -> torch.Size([2, 3, 64, 64])
+    # input_img -> torch.Size([2, 3, 64, 64])
+    print("fake_pred ->", fake_pred.shape)
+    print("fake_img ->", fake_img.shape)
+    print("real_img ->", real_img.shape)
+    print("input_img ->", input_img.shape)
+
     smooth_l1_loss, id_loss = loss_funcs
 
     loss = F.softplus(-fake_pred).mean()
+    # Lc из статьи
     loss_l1 = smooth_l1_loss(fake_img, real_img)
     loss_id, __, __ = id_loss(fake_img, real_img, input_img)
+    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # Здесь считаем корреляцию
+
+    # Здесь прибавляем ее к лоссу
+
+    print("--------------------------------------------Подсчет лосса--------------------------------------------")
+    # loss(La) = tensor(1.7624, grad_fn= < MeanBackward0 >)
+    # loss_l1(Lc) = tensor(0.3152, grad_fn= < SmoothL1LossBackward0 >)
+    # loss_id(Lf) = tensor(0.3979, grad_fn= < DivBackward0 >)
+    print("loss (La) =", loss)
+    print("loss_l1 (Lc) =", loss_l1)
+    print("loss_id (Lf) =", loss_id)
     loss += 1.0*loss_l1 + 1.0*loss_id
 
     return loss
@@ -148,10 +196,15 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
 
     mean_path_length = 0
 
+    ##############################################################################################################
     d_loss_val = 0
+    ##############################################################################################################
     r1_loss = torch.tensor(0.0, device=device)
+    ##############################################################################################################
     g_loss_val = 0
+    ##############################################################################################################
     path_loss = torch.tensor(0.0, device=device)
+    ##############################################################################################################
     path_lengths = torch.tensor(0.0, device=device)
     mean_path_length_avg = 0
     loss_dict = {}
@@ -198,32 +251,45 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         real_pred = discriminator(real_img)
         # print("discriminator (real_pred) ->", type(real_pred))
 
+        ##############################################################################################################
         # loss дискриминатора
+        # Предпологаю это La (теперь уверен)
         d_loss = d_logistic_loss(real_pred, fake_pred)
         # print("d_logistic_loss", d_loss)
 
+        ##############################################################################################################
+        # Значение функции ошибки дискриминатора
         loss_dict['d'] = d_loss
+        # Среднее значение предикта дискриминатора на реальном изображении
         loss_dict['real_score'] = real_pred.mean()
+        # Среднее значение предикта дискриминатора на сгенерированном изображении
         loss_dict['fake_score'] = fake_pred.mean()
 
+        # Обратное распространение ошибки для дискриминатора
         discriminator.zero_grad()
         d_loss.backward()
         d_optim.step()
 
+        # Периодичность регуляризации дискриминатора
         d_regularize = i % args.d_reg_every == 0
 
         # Регуляризация каждые 16 итераций
         if d_regularize:
             real_img.requires_grad = True
             real_pred = discriminator(real_img)
+            ##############################################################################################################
+            # R1-регуляризация не описана в статье
             r1_loss = d_r1_loss(real_pred, real_img)
+
+            # https://arxiv.org/pdf/1801.04406.pdf
 
             discriminator.zero_grad()
             (args.r1 / 2 * r1_loss * args.d_reg_every + 0 * real_pred[0]).backward()
 
             d_optim.step()
 
-        # loss регуляризации
+        ##############################################################################################################
+        # loss r1 регуляризации дискриминатора
         loss_dict['r1'] = r1_loss
 
         # Теперь градиент касается только генератора
@@ -234,10 +300,12 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         # print("generator (fake_img) ->", fake_img.shape)
         fake_pred = discriminator(fake_img)
         # print("discriminator (fake_pred) ->", fake_pred.shape)
+
+        ##############################################################################################################
         # loss генератора
         # print("In", fake_pred.shape, fake_img.shape, real_img.shape, degraded_img.shape)
         g_loss = g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img)
-
+        ##############################################################################################################
         loss_dict['g'] = g_loss
 
         generator.zero_grad()
@@ -250,12 +318,13 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
             path_batch_size = max(1, args.batch // args.path_batch_shrink)
 
             fake_img, latents = generator(degraded_img, return_latents=True)
-
+            ##############################################################################################################
             path_loss, mean_path_length, path_lengths = g_path_regularize(
                 fake_img, latents, mean_path_length
             )
 
             generator.zero_grad()
+            ##############################################################################################################
             weighted_path_loss = args.path_regularize * args.g_reg_every * path_loss
 
             if args.path_batch_shrink:
@@ -269,11 +338,13 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
                 reduce_sum(mean_path_length).item() / get_world_size()
             )
 
+        ##############################################################################################################
         loss_dict['path'] = path_loss
         loss_dict['path_length'] = path_lengths.mean()
 
         accumulate(g_ema, g_module, accum)
 
+        ##############################################################################################################
         loss_reduced = reduce_loss_dict(loss_dict)
 
         d_loss_val = loss_reduced['d'].mean().item()
@@ -521,3 +592,4 @@ if __name__ == '__main__':
     )
 
     train(args, loader, generator, discriminator, [smooth_l1_loss, id_loss], g_optim, d_optim, g_ema, lpips_func, device)
+    # def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_ema, lpips_func, device):

@@ -751,12 +751,12 @@ class FullGenerator(nn.Module):
 
         # ДЛЯ ТЕСТИРОВАНИЯ, ВРЕМЕННО ОНИ ОДИНАКОВЫ
         # torch.Size([2, 6, 64, 64])
-        test_inputs = torch.cat((inputs, inputs), dim=1)
+        inputs = torch.cat((inputs, inputs), dim=1)
         # print("test_inputs -> ", test_inputs.shape)
 
         # torch.Size([2, 3, 64, 64])
-        test_inputs = self.MY_NEW_CONV(test_inputs)
-        print("test_inputs ->", test_inputs.shape)
+        inputs = self.MY_NEW_CONV(inputs)
+        # print("test_inputs ->", test_inputs.shape)
 
 
 

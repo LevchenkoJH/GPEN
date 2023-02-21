@@ -29,11 +29,27 @@ class IDLoss(nn.Module):
         x_feats = self.facenet(x)
         return x_feats
 
+    # id_loss(fake_img, real_img, input_img)
     def forward(self, y_hat, y, x):
+        print("--------------------------------------------IDLoss forward--------------------------------------------")
+        # y_hat -> torch.Size([2, 3, 64, 64])
+        # y -> torch.Size([2, 3, 64, 64])
+        # x -> torch.Size([2, 3, 64, 64])
+        print("y_hat ->", y_hat.shape)
+        print("y ->", y.shape)
+        print("x ->", x.shape)
         n_samples = x.shape[0]
         x_feats = self.extract_feats(x)
-        y_feats = self.extract_feats(y)  # Otherwise use the feature from there
+        y_feats = self.extract_feats(y)  # Otherwise use the feature from there # В противном случае используйте функцию оттуда
         y_hat_feats = self.extract_feats(y_hat)
+
+        # y_hat_feats -> torch.Size([2, 512])
+        # y_feats -> torch.Size([2, 512])
+        # x_feats -> torch.Size([2, 512])
+        print("y_hat_feats ->", y_hat_feats.shape)
+        print("y_feats ->", y_feats.shape)
+        print("x_feats ->", x_feats.shape)
+
         y_feats = y_feats.detach()
         loss = 0
         sim_improvement = 0
