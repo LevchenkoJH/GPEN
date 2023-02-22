@@ -69,7 +69,7 @@ def sample_data(loader):
 
 
 def d_logistic_loss(real_pred, fake_pred):
-    print("--------------------------------------------d_logistic_loss-------------------------------------------")
+    # print("--------------------------------------------d_logistic_loss-------------------------------------------")
     # real_pred
     # tensor([[0.3418],
     #         [0.7029]], grad_fn= < AddmmBackward0 >)
@@ -82,8 +82,8 @@ def d_logistic_loss(real_pred, fake_pred):
 
     # Большое сходство с La из статьи
 
-    print("real_pred ->", real_pred.shape)
-    print("fake_pred ->", fake_pred.shape)
+    # print("real_pred ->", real_pred.shape)
+    # print("fake_pred ->", fake_pred.shape)
     real_loss = F.softplus(-real_pred)
     fake_loss = F.softplus(fake_pred)
 
@@ -91,13 +91,13 @@ def d_logistic_loss(real_pred, fake_pred):
 
 
 def d_r1_loss(real_pred, real_img):
-    print("--------------------------------------------d_r1_loss-------------------------------------------")
+    # print("--------------------------------------------d_r1_loss-------------------------------------------")
 
     # real_pred -> torch.Size([2, 1])
     # real_img -> torch.Size([2, 3, 64, 64])
 
-    print("real_pred ->", real_pred.shape)
-    print("real_img ->", real_img.shape)
+    # print("real_pred ->", real_pred.shape)
+    # print("real_img ->", real_img.shape)
 
     # https://arxiv.org/pdf/1801.04406.pdf
 
@@ -110,15 +110,15 @@ def d_r1_loss(real_pred, real_img):
 
 # g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img)
 def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=None, input_img=None):
-    print("--------------------------------------------g_nonsaturating_loss-------------------------------------------")
+    # print("--------------------------------------------g_nonsaturating_loss-------------------------------------------")
     # fake_pred -> torch.Size([2, 1])
     # fake_img -> torch.Size([2, 3, 64, 64])
     # real_img -> torch.Size([2, 3, 64, 64])
     # input_img -> torch.Size([2, 3, 64, 64])
-    print("fake_pred ->", fake_pred.shape)
-    print("fake_img ->", fake_img.shape)
-    print("real_img ->", real_img.shape)
-    print("input_img ->", input_img.shape)
+    # print("fake_pred ->", fake_pred.shape)
+    # print("fake_img ->", fake_img.shape)
+    # print("real_img ->", real_img.shape)
+    # print("input_img ->", input_img.shape)
 
     smooth_l1_loss, id_loss = loss_funcs
 
@@ -230,7 +230,7 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
 
         # [4, 3, 256, 256] - сейчас
         # [4, 2, 3, 256, 256] - нужно теперь
-        degraded_img, real_img = next(loader)
+        degraded_img, real_img, correlation_img = next(loader)
         # print("deg", degraded_img.shape)
         # print("real", real_img.shape)
 

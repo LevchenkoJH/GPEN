@@ -35,21 +35,38 @@ class GFPGAN_degradation(object):
         self.color_jitter_prob = 0.0
         self.color_jitter_pt_prob = 0.0
         self.shift = 20 / 255.
-    
-    def degrade_process(self, img_gt):
+
+    # Изменения также необходимы коррелируемому изображению
+    def degrade_process(self, img_gt, img_corr):
         if random.random() > 0.5:
+            # Также поворачиваем коррелируемое изображение
+            img_corr = cv2.flip(img_corr, 1)
+
             img_gt = cv2.flip(img_gt, 1)
 
+        # У коррелируемого изображения такиеже размеры
         h, w = img_gt.shape[:2]
-       
-        # random color jitter 
+
+
+        # random color jitter
+        # случайное цветовое дрожание
         if np.random.uniform() < self.color_jitter_prob:
             jitter_val = np.random.uniform(-self.shift, self.shift, 3).astype(np.float32)
+
+            # Также изменяем цвет у коррелируемого изображения
+            img_corr = img_corr + jitter_val
+            img_corr = np.clip(img_corr, 0, 1)
+
             img_gt = img_gt + jitter_val
             img_gt = np.clip(img_gt, 0, 1)    
 
         # random grayscale
+        # случайная шкала серого
         if np.random.uniform() < self.gray_prob:
+            # Также делаем серым коррелируемое изображение
+            img_corr = cv2.cvtColor(img_corr, cv2.COLOR_BGR2GRAY)
+            img_corr = np.tile(img_corr[:, :, None], [1, 1, 3])
+
             img_gt = cv2.cvtColor(img_gt, cv2.COLOR_BGR2GRAY)
             img_gt = np.tile(img_gt[:, :, None], [1, 1, 3])
         
@@ -80,15 +97,24 @@ class GFPGAN_degradation(object):
         # resize to original size
         img_lq = cv2.resize(img_lq, (w, h), interpolation=cv2.INTER_LINEAR)
 
-        return img_gt, img_lq
+        # Теперь также возвращаем коррелируемое изображение
+        return img_gt, img_lq, img_corr
 
 class FaceDataset(Dataset):
-    def __init__(self, path, resolution=512):
+    def __init__(self, path, resolution=512, test_path="examples/test_dataset"):
         print("--------------------------------------------INIT FaceDataset-------------------------------------------")
         self.resolution = resolution
         print("resolution =", resolution)
-        self.HQ_imgs = glob.glob(os.path.join(path, '*.*'))
-        print("HQ_imgs =", glob.glob(os.path.join(path, '*.*')))
+
+
+
+        self.HQ_imgs = glob.glob(os.path.join(test_path, '*', '*coef*'))#glob.glob(os.path.join(path, '*.*'))
+
+        # self.test_ = glob.glob(os.path.join(test_path, '*', '*coef*'))
+
+
+
+        print("HQ_imgs =", self.HQ_imgs)
         self.length = len(self.HQ_imgs)
         print("length =", len(self.HQ_imgs))
 
@@ -99,16 +125,51 @@ class FaceDataset(Dataset):
 
     def __getitem__(self, index):
 
-        # print("FaceDataset __getitem__ index =", index)
+        # print("--------------------------------------------FaceDataset __getitem__--------------------------------------------")
+        # print("index =", index)
 
 
-        img_gt = cv2.imread(self.HQ_imgs[index], cv2.IMREAD_COLOR)
+        images_path = glob.glob(os.path.join(self.HQ_imgs[index], '*.*'))
+        # print("images_path", images_path)
+        # print("image 1 path =", images_path[0])
+        # print("image 2 path =", images_path[1])
+
+
+
+
+        # img_gt = cv2.imread(self.HQ_imgs[index], cv2.IMREAD_COLOR)
+
+        # Изображение для корреляции
+        img_corr = cv2.imread(images_path[0], cv2.IMREAD_COLOR)
+        # Восстанавливаемое изображение
+        img_gt = cv2.imread(images_path[1], cv2.IMREAD_COLOR)
+
+
+
+
+
+
+        # print(self.HQ_imgs[index])
+
 
 
         # print("1 img_gt", img_gt.shape)
 
         # Изменяет разрешение
+
+
+
+        # DO resize -> (512, 512, 3)
+        # POSLE resize -> (64, 64, 3)
+        # print("DO resize ->", img_corr.shape)
+        # Также изменяем размер коррелируемого изображения
+        img_corr = cv2.resize(img_corr, (self.resolution, self.resolution), interpolation=cv2.INTER_AREA)
         img_gt = cv2.resize(img_gt, (self.resolution, self.resolution), interpolation=cv2.INTER_AREA)
+        # print("POSLE resize ->", img_corr.shape)
+
+
+
+
 
         # print("2 img_gt", img_gt.shape)
 
@@ -116,17 +177,33 @@ class FaceDataset(Dataset):
         # BFR degradation
         # We adopt the degradation of GFPGAN for simplicity, which however differs from our implementation in the paper.
         # Data degradation plays a key role in BFR. Please replace it with your own methods.
-        img_gt = img_gt.astype(np.float32)/255.
-        #~~~~~~
-        # img_lq = img_gt.copy()
-        img_gt, img_lq = self.degrader.degrade_process(img_gt)
 
+        # Мы принимаем деградацию GFPGAN для простоты, которая, однако, отличается от нашей реализации в статье.
+        # Деградация данных играет ключевую роль в BFR. Пожалуйста, замените его своими методами.
+
+        # Таким же образом нормализуем коррелируемое изображение
+        img_corr = img_corr.astype(np.float32)/255.
+        img_gt = img_gt.astype(np.float32)/255.
+
+
+        # gt-избражение изменяется вместе с corr-изображением одинаковым образом
+        img_gt, img_lq, img_corr = self.degrader.degrade_process(img_gt=img_gt, img_corr=img_corr)
+
+        # Повторяем манипуляции
+        img_corr = (torch.from_numpy(img_corr) - 0.5) / 0.5
         img_gt =  (torch.from_numpy(img_gt) - 0.5) / 0.5
         img_lq =  (torch.from_numpy(img_lq) - 0.5) / 0.5
-        
+
+
+
+        # Повторяем манипуляции
+        img_corr = img_corr.permute(2, 0, 1).flip(0)  # BGR->RGB
         img_gt = img_gt.permute(2, 0, 1).flip(0) # BGR->RGB
         img_lq = img_lq.permute(2, 0, 1).flip(0) # BGR->RGB
 
+
+
         # print("3 img_gt", img_gt.shape)
-        return img_lq, img_gt
+        # Теперь также возвращаем и коррелируемое изображение
+        return img_lq, img_gt, img_corr
 
