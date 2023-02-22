@@ -35,6 +35,7 @@ from distributed import (
 
 from training import lpips
 
+from сoefficients import kendall_coefficient
 
 # shuffle - перемешивать
 # distributed - распределенный
@@ -109,7 +110,7 @@ def d_r1_loss(real_pred, real_img):
     return grad_penalty
 
 # g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img)
-def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=None, input_img=None):
+def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=None, input_img=None, correlation_img=None):
     # print("--------------------------------------------g_nonsaturating_loss-------------------------------------------")
     # fake_pred -> torch.Size([2, 1])
     # fake_img -> torch.Size([2, 3, 64, 64])
@@ -138,6 +139,18 @@ def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=Non
     print("loss (La) =", loss)
     print("loss_l1 (Lc) =", loss_l1)
     print("loss_id (Lf) =", loss_id)
+
+
+
+    # Добавляем новую функцию потерь основанную на КОРРЕЛЯЦИИ
+    print("real_img ->", type(real_img))
+    print("correlation_img ->", type(correlation_img))
+    test = kendall_coefficient(real_img, correlation_img)
+
+
+
+
+
     loss += 1.0*loss_l1 + 1.0*loss_id
 
     return loss
@@ -159,8 +172,19 @@ def g_path_regularize(fake_img, latents, mean_path_length, decay=0.01):
     return path_penalty, path_mean.detach(), path_lengths
 
 def validation(model, lpips_func, args, device):
+
+    # ВРЕМЕННО УБИРАЮ ВАЛИДАЦИЮ
+    # НУЖНО ПОДГОТОВИТЬ ДАННЫЕ ДЛЯ ВАЛИДАЦИИ
+
+    print("--------------------------------------------validation--------------------------------------------")
+
+
     lq_files = sorted(glob.glob(os.path.join(args.val_dir, 'lq', '*.*')))
     hq_files = sorted(glob.glob(os.path.join(args.val_dir, 'hq', '*.*')))
+
+    print("lq_files ->", lq_files)
+    print("hq_files ->", hq_files)
+
 
     assert len(lq_files) == len(hq_files)
 
@@ -228,21 +252,42 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
             break
 
 
+
+
+
         # [4, 3, 256, 256] - сейчас
         # [4, 2, 3, 256, 256] - нужно теперь
         degraded_img, real_img, correlation_img = next(loader)
         # print("deg", degraded_img.shape)
         # print("real", real_img.shape)
 
+
+
+
+
+        correlation_img = correlation_img.to(device)
         degraded_img = degraded_img.to(device)
         real_img = real_img.to(device)
+
+
+
+
 
         # Сначала градиент касается только дискриминатора
         requires_grad(generator, False)
         requires_grad(discriminator, True)
 
+
+
+
+
         # Второе None
-        fake_img, _ = generator(degraded_img)
+        # На всход генератор должен также получать коррелируемое изображение
+        fake_img, _ = generator(degraded_img, correlation_img)
+
+
+
+
 
         # print("generator (fake_img) ->", fake_img.shape)
         fake_pred = discriminator(fake_img)
@@ -296,7 +341,8 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         requires_grad(generator, True)
         requires_grad(discriminator, False)
 
-        fake_img, _ = generator(degraded_img)
+        # Добавляем корреляционный вход
+        fake_img, _ = generator(degraded_img, correlation_img)
         # print("generator (fake_img) ->", fake_img.shape)
         fake_pred = discriminator(fake_img)
         # print("discriminator (fake_pred) ->", fake_pred.shape)
@@ -304,7 +350,9 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         ##############################################################################################################
         # loss генератора
         # print("In", fake_pred.shape, fake_img.shape, real_img.shape, degraded_img.shape)
-        g_loss = g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img)
+        # Добавляем в лосс генератора КОРРЕЛЯЦИЮ
+        # Добавляем корреляционный вход
+        g_loss = g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img, correlation_img=correlation_img)
         ##############################################################################################################
         loss_dict['g'] = g_loss
 
@@ -317,7 +365,9 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         if g_regularize:
             path_batch_size = max(1, args.batch // args.path_batch_shrink)
 
-            fake_img, latents = generator(degraded_img, return_latents=True)
+
+            # Добавляем корреляционный вход
+            fake_img, latents = generator(degraded_img, correlation_img, return_latents=True)
             ##############################################################################################################
             path_loss, mean_path_length, path_lengths = g_path_regularize(
                 fake_img, latents, mean_path_length
@@ -368,7 +418,9 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
 
                 with torch.no_grad():
                     g_ema.eval()
-                    sample, _ = g_ema(degraded_img)
+
+                    # Добавляем корреляционный вход
+                    sample, _ = g_ema(degraded_img, correlation_img)
                     # print("SAMPLE 1", sample.shape)
                     sample = torch.cat((degraded_img, sample, real_img), 0)
                     # print("SAMPLE 2", sample.shape)
@@ -380,8 +432,10 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
                         range=(-1, 1),
                     )
 
-                lpips_value = validation(g_ema, lpips_func, args, device)
-                print(f'{i}/{args.iter}: lpips: {lpips_value.cpu().numpy()[0][0][0][0]}')
+                # ВРЕМЕННО УБИРАЮ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                # lpips_value = validation(g_ema, lpips_func, args, device)
+                # print(f'{i}/{args.iter}: lpips: {lpips_value.cpu().numpy()[0][0][0][0]}')
+                print("NOT VALIDATION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
             if i and i % args.save_freq == 0:
                 torch.save(

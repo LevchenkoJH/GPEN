@@ -731,6 +731,7 @@ class FullGenerator(nn.Module):
 
     def forward(self,
         inputs,
+        correlation_inputs,
         return_latents=False,
         inject_index=None,
         truncation=1,
@@ -738,12 +739,14 @@ class FullGenerator(nn.Module):
         input_is_latent=False,
     ):
 
-
-
-
-
-
-
+        # Проверка корреляционного входа
+        # print("correlation_inputs ->", correlation_inputs.shape)
+        #
+        # print("inputs ->", inputs.shape)
+        #
+        # print("correlation_inputs ->", correlation_inputs)
+        #
+        # print("inputs ->", inputs)
 
 
         # Наша предобработка
@@ -751,7 +754,13 @@ class FullGenerator(nn.Module):
 
         # ДЛЯ ТЕСТИРОВАНИЯ, ВРЕМЕННО ОНИ ОДИНАКОВЫ
         # torch.Size([2, 6, 64, 64])
-        inputs = torch.cat((inputs, inputs), dim=1)
+
+
+        # ЗАКАНЧИВАЕМ ТЕСТИРОВАНИЕ
+        # Внедряем корреляционный вход
+        inputs = torch.cat((correlation_inputs, inputs), dim=1)
+
+
         # print("test_inputs -> ", test_inputs.shape)
 
         # torch.Size([2, 3, 64, 64])
