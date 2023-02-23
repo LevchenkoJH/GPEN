@@ -7,9 +7,15 @@
 #SBATCH --error=inference-%j.err
 #SBATCH --output=inference-%j.log
 
-conda deactivate
-deactivate
+
+
+python3 -m venv env
+
 source venv/bin/activate
+
+which python
+
+python3 -m pip install -r requirements.txt
 
 python train_simple.py
 
