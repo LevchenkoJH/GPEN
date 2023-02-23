@@ -115,8 +115,8 @@ def kendall_coefficient(torch_image1, torch_image2, show=False, prin=False):
     # print("torch_image2 ->", torch_image2.shape)
 
     # Переводим в numpy-массив
-    image1 = torch_image1.detach().numpy()
-    image2 = torch_image2.detach().numpy()
+    image1 = torch_image1.detach().cpu().numpy()
+    image2 = torch_image2.detach().cpu().numpy()
 
     # image1 numpy -> (2, 3, 64, 64)
     # image2 numpy -> (2, 3, 64, 64)

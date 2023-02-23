@@ -439,7 +439,7 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
                 # ВРЕМЕННО УБИРАЮ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 # lpips_value = validation(g_ema, lpips_func, args, device)
                 # print(f'{i}/{args.iter}: lpips: {lpips_value.cpu().numpy()[0][0][0][0]}')
-                print("NOT VALIDATION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                # print("NOT VALIDATION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
             if i and i % args.save_freq == 0:
                 torch.save(
@@ -475,27 +475,51 @@ if __name__ == '__main__':
 
     # Желательно знать для чего нужен каждый аргумент
     print("PARSER")
-    # Заглушка
-    # parser.add_argument('--path', type=str, required=True)
+
     # path your_path_of_croped+aligned_hq_faces
-    parser.add_argument('--path', type=str, default='examples/ffhq-10')
+    parser.add_argument('--path', type=str, default='examples/test_dataset')
 
     parser.add_argument('--base_dir', type=str, default='./')
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    parser.add_argument('--iter', type=int, default=10000)
+    parser.add_argument('--iter', type=int, default=60000)
     # parser.add_argument('--iter', type=int, default=4000000)
+
+
+
+
+
     # batch 2
-    # parser.add_argument('--batch', type=int, default=4)
     parser.add_argument('--batch', type=int, default=2)
+    # parser.add_argument('--batch', type=int, default=4)
+
+
+
+
+
+
     # size 1024
     # Из-за id_loss минимальный размер по задумке 256
     # Из-за нехватки памяти вынужден переделать id_loss и поставить 64
     # parser.add_argument('--size', type=int, default=256)
     parser.add_argument('--size', type=int, default=64)
+
+
+
+
+
+
+
     # channel_multiplier 2
     # Из-за нехватки памяти 1
     # parser.add_argument('--channel_multiplier', type=int, default=2)
     parser.add_argument('--channel_multiplier', type=int, default=1)
+
+
+
+
+
+
+
     # narrow 1
     parser.add_argument('--narrow', type=float, default=1.0)
 
@@ -510,7 +534,7 @@ if __name__ == '__main__':
     parser.add_argument('--g_reg_every', type=int, default=4)
     # Логирование в виде изображений и сохранение весов раз в 10000 итераций
     # parser.add_argument('--save_freq', type=int, default=10000)
-    parser.add_argument('--save_freq', type=int, default=1000)
+    parser.add_argument('--save_freq', type=int, default=2000)
     # Параметр для оптимизатора
     parser.add_argument('--lr', type=float, default=0.002)
 
@@ -537,7 +561,7 @@ if __name__ == '__main__':
     os.makedirs(args.sample, exist_ok=True)
 
     # Попробовать использовать 'cpu' в место 'cuda'
-    device = 'cpu'
+    device = 'cuda'
 
     # Скорее всего имеется в виду количество видеокарт
     n_gpu = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1

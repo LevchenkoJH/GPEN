@@ -102,14 +102,14 @@ class GFPGAN_degradation(object):
         return img_gt, img_lq, img_corr
 
 class FaceDataset(Dataset):
-    def __init__(self, path, resolution=512, test_path="examples/test_dataset"):
+    def __init__(self, path, resolution=512):
         print("--------------------------------------------INIT FaceDataset-------------------------------------------")
         self.resolution = resolution
         print("resolution =", resolution)
 
 
 
-        self.HQ_imgs = glob.glob(os.path.join(test_path, '*', '*coef*'))#glob.glob(os.path.join(path, '*.*'))
+        self.HQ_imgs = glob.glob(os.path.join(path, '*', '*coef*'))#glob.glob(os.path.join(path, '*.*'))
 
         # self.test_ = glob.glob(os.path.join(test_path, '*', '*coef*'))
 
