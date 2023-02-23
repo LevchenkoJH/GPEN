@@ -7,7 +7,8 @@
 #SBATCH --error=inference-%j.err
 #SBATCH --output=inference-%j.log
 
-source deactivate
+conda deactivate
+deactivate
 source venv/bin/activate
 
 python train_simple.py
