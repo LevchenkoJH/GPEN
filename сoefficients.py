@@ -107,35 +107,95 @@ def cross_correlation_coefficient(image1, image2, show=False, prin=False):
 def kendall_coefficient(torch_image1, torch_image2, show=False, prin=False):
     # Нужно перейти из RGB в яркостное представление
     # Возможно для тензоров нельзя использовать методы OpenCV
+    # так и оказалось
 
-    print("torch_image1 ->", torch_image1.shape)
-    print("torch_image2 ->", torch_image2.shape)
+    # torch_image1 -> torch.Size([2, 3, 64, 64])
+    # torch_image2 -> torch.Size([2, 3, 64, 64])
+    # print("torch_image1 ->", torch_image1.shape)
+    # print("torch_image2 ->", torch_image2.shape)
 
+    # Переводим в numpy-массив
     image1 = torch_image1.detach().numpy()
     image2 = torch_image2.detach().numpy()
 
-    image1 = cv2.cvtColor(image1[0], cv2.COLOR_BGR2GRAY)
-    image2 = cv2.cvtColor(image2[0], cv2.COLOR_BGR2GRAY)
+    # image1 numpy -> (2, 3, 64, 64)
+    # image2 numpy -> (2, 3, 64, 64)
+    # print("image1 numpy ->", image1.shape)
+    # print("image2 numpy ->", image2.shape)
+
+
+    # Производим обратные действия относительно dataset_face __get+item__
+    image1 = (image1 * 0.5) + 0.5
+    image2 = (image2 * 0.5) + 0.5
+
+    image1 = (image1 * 255.).astype(np.uint8)
+    image2 = (image2 * 255.).astype(np.uint8)
+
+    image1 = np.reshape(image1, (-1, image1.shape[2], image1.shape[3], image1.shape[1]))
+    image2 = np.reshape(image2, (-1, image2.shape[2], image2.shape[3], image2.shape[1]))
+
+    # image1 -> (2, 64, 64, 3)
+    # image2 -> (2, 64, 64, 3)
+    # print("image1 ->", image1.shape)
+    # print("image2 ->", image2.shape)
+
+    # Даталоадер подгружает изображения в RGB
+    # cvtColor не работает для батчей
+    gray_image1 = []
+    gray_image2 = []
+    for i in range(len(image1)):
+        # print("Изображение", i)
+        if len(gray_image1) == 0:
+            gray_image1 = np.array([cv2.cvtColor(image1[i], cv2.COLOR_RGB2GRAY)])
+        else:
+            gray_image1 = np.append(gray_image1, [cv2.cvtColor(image1[i], cv2.COLOR_RGB2GRAY)], axis=0)
+        # print("gray_image1 ->", gray_image1.shape)
+
+    for i in range(len(image2)):
+        # print("Изображение", i)
+        if len(gray_image2) == 0:
+            gray_image2 = np.array([cv2.cvtColor(image2[i], cv2.COLOR_RGB2GRAY)])
+        else:
+            gray_image2 = np.append(gray_image2, [cv2.cvtColor(image2[i], cv2.COLOR_RGB2GRAY)], axis=0)
+        # print("gray_image2 ->", gray_image2.shape)
+
+    image1 = gray_image1
+    image2 = gray_image2
+
+    # image1 -> <class 'numpy.ndarray'>
+    # image2 -> <class 'numpy.ndarray'>
+    # print("image1 ->", type(image1))
+    # print("image2 ->", type(image2))
+
+    # image1 -> (2, 64, 64)
+    # image2 -> (2, 64, 64)
+    # print("image1 ->", image1.shape)
+    # print("image2 ->", image2.shape)
     
     if show:
         show_image(image1, "gray image1")
         show_image(image2, "gray image2")
-        
-        
-    image1 = image1.reshape(image1.shape[0]*image1.shape[1])
-    image2 = image2.reshape(image2.shape[0]*image2.shape[1])
-    
-    # Количество инверсий
-    R = 0
-    
-    
-    
-    coef, _ = kendalltau(image1, image2)
+
+    image1 = image1.reshape(-1, image1.shape[1]*image1.shape[2])
+    image2 = image2.reshape(-1, image2.shape[1]*image2.shape[2])
+
+    # image1 -> (2, 4096)
+    # image2 -> (2, 4096)
+    # print("image1 ->", image1.shape)
+    # print("image2 ->", image2.shape)
+
+    # Считаем корреляцию не между батчами,
+    # а среднюю корреляцию между изображениями батчей
+    batch_coef = np.array([])
+    for i in range(len(image1)):
+        coef, _ = kendalltau(image1[i], image2[i])
+        batch_coef = np.append(batch_coef, coef)
+    # print("batch_coef ->", batch_coef.mean())
     
     if prin:
-        print('Коэффициент ранговой корреляции Кендалла ->', coef)
+        print('Коэффициент ранговой корреляции Кендалла ->', batch_coef.mean())
     
-    return coef
+    return batch_coef.mean()
 
 
 # # Одна пара изображений

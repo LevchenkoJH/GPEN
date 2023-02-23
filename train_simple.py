@@ -132,26 +132,30 @@ def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=Non
 
     # Здесь прибавляем ее к лоссу
 
-    print("--------------------------------------------Подсчет лосса--------------------------------------------")
+    # print("--------------------------------------------Подсчет лосса--------------------------------------------")
     # loss(La) = tensor(1.7624, grad_fn= < MeanBackward0 >)
     # loss_l1(Lc) = tensor(0.3152, grad_fn= < SmoothL1LossBackward0 >)
     # loss_id(Lf) = tensor(0.3979, grad_fn= < DivBackward0 >)
-    print("loss (La) =", loss)
-    print("loss_l1 (Lc) =", loss_l1)
-    print("loss_id (Lf) =", loss_id)
+    # print("loss (La) =", loss)
+    # print("loss_l1 (Lc) =", loss_l1)
+    # print("loss_id (Lf) =", loss_id)
 
 
 
     # Добавляем новую функцию потерь основанную на КОРРЕЛЯЦИИ
-    print("real_img ->", type(real_img))
-    print("correlation_img ->", type(correlation_img))
-    test = kendall_coefficient(real_img, correlation_img)
+    # print("real_img ->", type(real_img))
+    # print("correlation_img ->", type(correlation_img))
 
 
 
+    corr_between_real_corr = kendall_coefficient(real_img, correlation_img)
+    corr_between_fake_corr = kendall_coefficient(fake_img, correlation_img)
 
+    loss_correlation = corr_between_real_corr - corr_between_fake_corr
 
-    loss += 1.0*loss_l1 + 1.0*loss_id
+    # print("loss_correlation ->", loss_correlation)
+
+    loss += 1.0*loss_l1 + 1.0*loss_id + 1.0*loss_correlation
 
     return loss
 
