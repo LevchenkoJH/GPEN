@@ -140,6 +140,9 @@ class FaceDataset(Dataset):
 
         # img_gt = cv2.imread(self.HQ_imgs[index], cv2.IMREAD_COLOR)
 
+        print("img_corr path =", images_path[0], flush=True)
+        print("img_gt path =", images_path[1], flush=True)
+
         # Изображение для корреляции
         img_corr = cv2.imread(images_path[0], cv2.IMREAD_COLOR)
         # Восстанавливаемое изображение
