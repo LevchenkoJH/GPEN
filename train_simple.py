@@ -212,7 +212,7 @@ def validation(model, lpips_func, args, device):
 
 
 def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_ema, lpips_func, device):
-    print("--------------------------------------------TRAIN-------------------------------------------")
+    print("--------------------------------------------TRAIN-------------------------------------------", flush=True)
     # print(torch.cuda.memory_summary(device=device, abbreviated=False))
 
     loader = sample_data(loader)
@@ -474,7 +474,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Желательно знать для чего нужен каждый аргумент
-    print("PARSER")
+    print("PARSER", flush=True)
 
     # path your_path_of_croped+aligned_hq_faces
     parser.add_argument('--path', type=str, default='examples/test_dataset')
@@ -489,8 +489,8 @@ if __name__ == '__main__':
 
 
     # batch 2
-    parser.add_argument('--batch', type=int, default=2)
-    # parser.add_argument('--batch', type=int, default=4)
+    # parser.add_argument('--batch', type=int, default=2)
+    parser.add_argument('--batch', type=int, default=4)
 
 
 
@@ -511,8 +511,8 @@ if __name__ == '__main__':
 
     # channel_multiplier 2
     # Из-за нехватки памяти 1
-    # parser.add_argument('--channel_multiplier', type=int, default=2)
-    parser.add_argument('--channel_multiplier', type=int, default=1)
+    parser.add_argument('--channel_multiplier', type=int, default=2)
+    # parser.add_argument('--channel_multiplier', type=int, default=1)
 
 
 

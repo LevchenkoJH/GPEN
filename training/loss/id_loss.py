@@ -6,7 +6,7 @@ from model_irse import Backbone
 class IDLoss(nn.Module):
     def __init__(self, base_dir='./', device='cuda', ckpt_dict=None):
         super(IDLoss, self).__init__()
-        print('Loading ResNet ArcFace')
+        print('Loading ResNet ArcFace', flush=True)
         self.facenet = Backbone(input_size=112, num_layers=50, drop_ratio=0.6, mode='ir_se').to(device)
         if ckpt_dict is None:
             self.facenet.load_state_dict(torch.load(os.path.join(base_dir, 'weights', 'model_ir_se50.pth'), map_location=torch.device('cpu')))

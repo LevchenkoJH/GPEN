@@ -103,9 +103,9 @@ class GFPGAN_degradation(object):
 
 class FaceDataset(Dataset):
     def __init__(self, path, resolution=512):
-        print("--------------------------------------------INIT FaceDataset-------------------------------------------")
+        print("--------------------------------------------INIT FaceDataset-------------------------------------------", flush=True)
         self.resolution = resolution
-        print("resolution =", resolution)
+        print("resolution =", resolution, flush=True)
 
 
 
@@ -115,9 +115,9 @@ class FaceDataset(Dataset):
 
 
 
-        print("HQ_imgs =", self.HQ_imgs)
+        print("HQ_imgs =", self.HQ_imgs, flush=True)
         self.length = len(self.HQ_imgs)
-        print("length =", len(self.HQ_imgs))
+        print("length =", len(self.HQ_imgs), flush=True)
 
         self.degrader = GFPGAN_degradation()
 

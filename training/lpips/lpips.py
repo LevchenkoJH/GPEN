@@ -28,7 +28,7 @@ class LPIPS(nn.Module):
         super(LPIPS, self).__init__()
         if(verbose):
             print('Setting up [%s] perceptual loss: trunk [%s], v[%s], spatial [%s]'%
-                ('LPIPS' if lpips else 'baseline', net, version, 'on' if spatial else 'off'))
+                ('LPIPS' if lpips else 'baseline', net, version, 'on' if spatial else 'off'), flush=True)
 
         self.pnet_type = net
         self.pnet_tune = pnet_tune
@@ -71,7 +71,7 @@ class LPIPS(nn.Module):
                     model_path = os.path.abspath(os.path.join(inspect.getfile(self.__init__), '..', 'weights/v%s/%s.pth'%(version,net)))
 
                 if(verbose):
-                    print('Loading model from: %s'%model_path)
+                    print('Loading model from: %s'%model_path, flush=True)
                 self.load_state_dict(torch.load(model_path, map_location='cpu'), strict=False)          
 
         if(eval_mode):
