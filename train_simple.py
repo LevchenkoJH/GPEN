@@ -481,7 +481,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--base_dir', type=str, default='./')
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    parser.add_argument('--iter', type=int, default=60000)
+    parser.add_argument('--iter', type=int, default=300000)
     # parser.add_argument('--iter', type=int, default=4000000)
 
 
@@ -534,7 +534,7 @@ if __name__ == '__main__':
     parser.add_argument('--g_reg_every', type=int, default=4)
     # Логирование в виде изображений и сохранение весов раз в 10000 итераций
     # parser.add_argument('--save_freq', type=int, default=10000)
-    parser.add_argument('--save_freq', type=int, default=2000)
+    parser.add_argument('--save_freq', type=int, default=50000)
     # Параметр для оптимизатора
     parser.add_argument('--lr', type=float, default=0.002)
 
