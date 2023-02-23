@@ -25,12 +25,13 @@ class GFPGAN_degradation(object):
         # self.color_jitter_pt_prob = 0.0
         # self.shift = 20/255.
 
-        self.kernel_prob = [0.5, 0.5]
-        self.blur_kernel_size = 41
-        self.blur_sigma = [0.1, 10]
-        self.downsample_range = [0.8, 8]
-        self.noise_range = [0, 20]
-        self.jpeg_range = [60, 100]
+        self.kernel_prob = [0.25, 0.25]
+        self.blur_kernel_size = 21
+        self.blur_sigma = [0.05, 5]
+        self.downsample_range = [0.4, 4]
+        self.noise_range = [0, 10]
+        self.jpeg_range = [30, 50]
+
         self.gray_prob = 0.2
         self.color_jitter_prob = 0.0
         self.color_jitter_pt_prob = 0.0

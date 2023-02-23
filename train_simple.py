@@ -153,7 +153,7 @@ def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=Non
 
     loss_correlation = corr_between_real_corr - corr_between_fake_corr
 
-    # print("loss_correlation ->", loss_correlation)
+    # print("corr_between_real_corr ->", corr_between_real_corr)
 
     loss += 1.0*loss_l1 + 1.0*loss_id + 1.0*loss_correlation
 
@@ -426,7 +426,7 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
                     # Добавляем корреляционный вход
                     sample, _ = g_ema(degraded_img, correlation_img)
                     # print("SAMPLE 1", sample.shape)
-                    sample = torch.cat((degraded_img, sample, real_img), 0)
+                    sample = torch.cat((correlation_img, degraded_img, sample, real_img), 0)
                     # print("SAMPLE 2", sample.shape)
                     utils.save_image(
                         sample,
