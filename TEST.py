@@ -6,7 +6,8 @@ import os
 import glob
 
 
-path = '/home/jasmine/VGGFace2-HQ/Data/VGGface2_FFHQalign'
+# path = '/home/jasmine/VGGFace2-HQ/Data/VGGface2_FFHQalign'
+path = '/home/levchenkone/GITHUB/GPEN/examples/test_dataset'
 
 HQ_imgs = glob.glob(os.path.join(path, '*', '*coef*'))
 
