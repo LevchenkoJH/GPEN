@@ -25,12 +25,24 @@ class GFPGAN_degradation(object):
         # self.color_jitter_pt_prob = 0.0
         # self.shift = 20/255.
 
-        self.kernel_prob = [0.25, 0.25]
-        self.blur_kernel_size = 21
-        self.blur_sigma = [0.05, 5]
-        self.downsample_range = [0.4, 4]
+        # self.kernel_prob = [0.25, 0.25]
+        # self.blur_kernel_size = 21
+        # self.blur_sigma = [0.05, 5]
+        # self.downsample_range = [0.4, 4]
+        # self.noise_range = [0, 10]
+        # self.jpeg_range = [30, 50]
+        #
+        # self.gray_prob = 0.2
+        # self.color_jitter_prob = 0.0
+        # self.color_jitter_pt_prob = 0.0
+        # self.shift = 20 / 255.
+
+        self.kernel_prob = [0.13, 0.13]
+        self.blur_kernel_size = 13
+        self.blur_sigma = [0.03, 3]
+        self.downsample_range = [0.2, 3]
         self.noise_range = [0, 10]
-        self.jpeg_range = [30, 50]
+        self.jpeg_range = [15, 20]
 
         self.gray_prob = 0.2
         self.color_jitter_prob = 0.0
@@ -115,7 +127,7 @@ class FaceDataset(Dataset):
 
 
 
-        print("HQ_imgs =", self.HQ_imgs, flush=True)
+        # print("HQ_imgs =", self.HQ_imgs, flush=True)
         self.length = len(self.HQ_imgs)
         print("length =", len(self.HQ_imgs), flush=True)
 
@@ -140,8 +152,8 @@ class FaceDataset(Dataset):
 
         # img_gt = cv2.imread(self.HQ_imgs[index], cv2.IMREAD_COLOR)
 
-        print("img_corr path =", images_path[0], flush=True)
-        print("img_gt path =", images_path[1], flush=True)
+        # print("img_corr path =", images_path[0], flush=True)
+        # print("img_gt path =", images_path[1], flush=True)
 
         # Изображение для корреляции
         img_corr = cv2.imread(images_path[0], cv2.IMREAD_COLOR)

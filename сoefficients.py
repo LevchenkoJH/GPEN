@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from scipy.stats import kendalltau
+import torch
 import time
 
 
@@ -104,7 +105,7 @@ def cross_correlation_coefficient(image1, image2, show=False, prin=False):
 # In[6]:
 
 
-def kendall_coefficient(torch_image1, torch_image2, show=False, prin=False):
+def kendall_coefficient(torch_image1, torch_image2, device, show=False, prin=False):
     # Нужно перейти из RGB в яркостное представление
     # Возможно для тензоров нельзя использовать методы OpenCV
     # так и оказалось
@@ -191,11 +192,13 @@ def kendall_coefficient(torch_image1, torch_image2, show=False, prin=False):
         coef, _ = kendalltau(image1[i], image2[i])
         batch_coef = np.append(batch_coef, coef)
     # print("batch_coef ->", batch_coef.mean())
-    
+
+    # batch_coef = np.array(batch_coef.mean())
+
     if prin:
-        print('Коэффициент ранговой корреляции Кендалла ->', batch_coef.mean())
+        print('Коэффициент ранговой корреляции Кендалла ->', batch_coef, flush=True)
     
-    return batch_coef.mean()
+    return torch.from_numpy(batch_coef).float().to(device)
 
 
 # # Одна пара изображений

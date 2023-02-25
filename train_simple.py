@@ -36,6 +36,7 @@ from distributed import (
 from training import lpips
 
 from сoefficients import kendall_coefficient
+import numpy as np
 
 # shuffle - перемешивать
 # distributed - распределенный
@@ -110,7 +111,7 @@ def d_r1_loss(real_pred, real_img):
     return grad_penalty
 
 # g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img)
-def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=None, input_img=None, correlation_img=None):
+def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=None, input_img=None, correlation_img=None, correlation_consider=True, device='cuda'):
     # print("--------------------------------------------g_nonsaturating_loss-------------------------------------------")
     # fake_pred -> torch.Size([2, 1])
     # fake_img -> torch.Size([2, 3, 64, 64])
@@ -146,18 +147,24 @@ def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=Non
     # print("real_img ->", type(real_img))
     # print("correlation_img ->", type(correlation_img))
 
-
-
-    corr_between_real_corr = kendall_coefficient(real_img, correlation_img)
-    corr_between_fake_corr = kendall_coefficient(fake_img, correlation_img)
-
-    loss_correlation = corr_between_real_corr - corr_between_fake_corr
+    loss_correlation = torch.tensor(0.0, device=device)
+    if correlation_consider:
+        corr_between_real_corr = kendall_coefficient(real_img, correlation_img, device=device, prin=True)
+        corr_between_fake_corr = kendall_coefficient(fake_img, correlation_img, device=device, prin=True)
+        loss_correlation = corr_between_real_corr - corr_between_fake_corr
+    loss_correlation = F.leaky_relu(6.0*loss_correlation).mean()
 
     # print("corr_between_real_corr ->", corr_between_real_corr)
 
+    # print("loss_id ->", type(loss_id))
+    # print("loss_id ->", loss_id)
+    # print("loss_correlation ->", type(loss_correlation))
+    print("loss_correlation ->", loss_correlation, flush=True)
+
+    # Увеличиваем коэффициент перед слагаемым отвечающим за корреляцию
     loss += 1.0*loss_l1 + 1.0*loss_id + 1.0*loss_correlation
 
-    return loss
+    return loss, loss_correlation
 
 
 def g_path_regularize(fake_img, latents, mean_path_length, decay=0.01):
@@ -261,7 +268,23 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
 
         # [4, 3, 256, 256] - сейчас
         # [4, 2, 3, 256, 256] - нужно теперь
+
+
+
+
         degraded_img, real_img, correlation_img = next(loader)
+
+        # Вероятность получить черное изображение в место коррелируемого (На первый раз пробуем 50% шанс)
+        zero_correlation_chance = 0.5
+        # Учитываем ли корреляцию при подсчете лосса генератора
+        correlation_consider = True # По умолчанию
+        # Если сработает то заменяем корреляционное изображние - пустым, и не учитываем при подсчете лосса генератора
+        if np.random.uniform() < zero_correlation_chance:
+            correlation_img = torch.zeros_like(correlation_img)
+            correlation_consider = False
+            print("Пустое корреляционное изображение", flush=True)
+        else:
+            print("Не пустое корреляционное изображение", flush=True)
         # print("deg", degraded_img.shape)
         # print("real", real_img.shape)
 
@@ -356,9 +379,10 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         # print("In", fake_pred.shape, fake_img.shape, real_img.shape, degraded_img.shape)
         # Добавляем в лосс генератора КОРРЕЛЯЦИЮ
         # Добавляем корреляционный вход
-        g_loss = g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img, correlation_img=correlation_img)
+        g_loss, loss_correlation = g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img, correlation_img=correlation_img, correlation_consider=correlation_consider, device=device)
         ##############################################################################################################
         loss_dict['g'] = g_loss
+        loss_dict['corr'] = loss_correlation
 
         generator.zero_grad()
         g_loss.backward()
@@ -403,6 +427,7 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
 
         d_loss_val = loss_reduced['d'].mean().item()
         g_loss_val = loss_reduced['g'].mean().item()
+        corr_loss_val = loss_reduced['corr'].mean().item()
         r1_val = loss_reduced['r1'].mean().item()
         path_loss_val = loss_reduced['path'].mean().item()
         # print("path_loss_val =", path_loss_val)
@@ -414,11 +439,11 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         if get_rank() == 0:
             pbar.set_description(
                 (
-                    f'd: {d_loss_val:.4f}; g: {g_loss_val:.4f}; r1: {r1_val:.4f}; '
+                    f'd: {d_loss_val:.4f}; g: {g_loss_val:.4f}; r1: {r1_val:.4f}; corr: {corr_loss_val:.4f}'
                 )
             )
 
-            if i % (args.save_freq // 100) == 0:
+            if i % (args.save_freq // 200) == 0:
 
                 with torch.no_grad():
                     g_ema.eval()
