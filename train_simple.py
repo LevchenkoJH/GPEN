@@ -279,7 +279,7 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         # Учитываем ли корреляцию при подсчете лосса генератора
         correlation_consider = True # По умолчанию
         # Если сработает то заменяем корреляционное изображние - пустым, и не учитываем при подсчете лосса генератора
-        if np.random.uniform() < zero_correlation_chance:
+        if True:#np.random.uniform() < zero_correlation_chance:
             correlation_img = torch.zeros_like(correlation_img)
             correlation_consider = False
             print("Пустое корреляционное изображение", flush=True)
@@ -559,7 +559,7 @@ if __name__ == '__main__':
     parser.add_argument('--g_reg_every', type=int, default=4)
     # Логирование в виде изображений и сохранение весов раз в 10000 итераций
     # parser.add_argument('--save_freq', type=int, default=10000)
-    parser.add_argument('--save_freq', type=int, default=50000)
+    parser.add_argument('--save_freq', type=int, default=25000)
     # Параметр для оптимизатора
     parser.add_argument('--lr', type=float, default=0.002)
 
@@ -567,7 +567,23 @@ if __name__ == '__main__':
     # ckpt weights
     parser.add_argument('--ckpt', type=str, default='ckpts')
 
-    parser.add_argument('--pretrain', type=str, default=None)
+
+
+
+
+
+
+
+
+    # parser.add_argument('--pretrain', type=str, default=None)
+    parser.add_argument('--pretrain', type=str, default='ckpts/050000.pth')
+
+
+
+
+
+
+
     # sample results
     parser.add_argument('--sample', type=str, default='sample')
 
@@ -606,9 +622,22 @@ if __name__ == '__main__':
     # количество слоев многослойного восприятия
     args.n_mlp = 8
 
+
+
+
+
+
+
     # Стартовая итерация
     # Видимо, для пауз процесса обучения
-    args.start_iter = 0
+    args.start_iter = 50001
+
+
+
+
+
+
+
 
     # Разобрать !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     # Модель генератора
@@ -651,17 +680,17 @@ if __name__ == '__main__':
 
     # Если модель обучалась ранее
     # Пока нет необходимости
-    # if args.pretrain is not None:
-    #     print('load model:', args.pretrain)
-    #
-    #     ckpt = torch.load(args.pretrain)
-    #
-    #     generator.load_state_dict(ckpt['g'])
-    #     discriminator.load_state_dict(ckpt['d'])
-    #     g_ema.load_state_dict(ckpt['g_ema'])
-    #
-    #     g_optim.load_state_dict(ckpt['g_optim'])
-    #     d_optim.load_state_dict(ckpt['d_optim'])
+    if args.pretrain is not None:
+        print('load model:', args.pretrain)
+
+        ckpt = torch.load(args.pretrain)
+
+        generator.load_state_dict(ckpt['g'])
+        discriminator.load_state_dict(ckpt['d'])
+        g_ema.load_state_dict(ckpt['g_ema'])
+
+        g_optim.load_state_dict(ckpt['g_optim'])
+        d_optim.load_state_dict(ckpt['d_optim'])
 
     smooth_l1_loss = torch.nn.SmoothL1Loss().to(device)
     id_loss = IDLoss(args.base_dir, device, ckpt_dict=None)
