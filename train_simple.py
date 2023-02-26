@@ -679,9 +679,8 @@ if __name__ == '__main__':
 
 
     # Если модель обучалась ранее
-    # Пока нет необходимости
     if args.pretrain is not None:
-        print('load model:', args.pretrain)
+        print('load model:', args.pretrain, flush=True)
 
         ckpt = torch.load(args.pretrain)
 
