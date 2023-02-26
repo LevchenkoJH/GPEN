@@ -42,7 +42,7 @@ class GFPGAN_degradation(object):
         self.blur_sigma = [0.03, 3]
         self.downsample_range = [0.2, 3]
         self.noise_range = [0, 10]
-        self.jpeg_range = [15, 20]
+        self.jpeg_range = [60, 100]
 
         self.gray_prob = 0.2
         self.color_jitter_prob = 0.0
@@ -109,6 +109,49 @@ class GFPGAN_degradation(object):
 
         # resize to original size
         img_lq = cv2.resize(img_lq, (w, h), interpolation=cv2.INTER_LINEAR)
+
+        # ------------------------ generate corr-lq image ------------------------ #
+        # blur
+        kernel = degradations.random_mixed_kernels(
+            self.kernel_list,
+            self.kernel_prob,
+            self.blur_kernel_size,
+            self.blur_sigma,
+            self.blur_sigma, [-math.pi, math.pi],
+            noise_range=None)
+
+        # Образуется от самого себя
+        img_corr = cv2.filter2D(img_corr, -1, kernel)
+
+        # downsample
+        # scale = np.random.uniform(self.downsample_range[0]/2, self.downsample_range[1]/2)
+        # img_corr = cv2.resize(img_corr, (int(w // scale), int(h // scale)), interpolation=cv2.INTER_LINEAR)
+
+        # noise
+        if self.noise_range is not None:
+            img_corr = degradations.random_add_gaussian_noise(img_corr, self.noise_range)
+        # jpeg compression
+        if self.jpeg_range is not None:
+            img_corr = degradations.random_add_jpg_compression(img_corr, self.jpeg_range)
+
+        # round and clip
+        # img_corr = np.clip((img_corr * 255.0).round(), 0, 255) / 255.
+
+        # resize to original size
+        # img_corr = cv2.resize(img_corr, (w, h), interpolation=cv2.INTER_LINEAR)
+
+        # Количество квадратов (Максимум 6, Минимум 3)
+        # Ширина высота (Максимум 90, минимум 40)
+
+        min_size = 10
+        max_size = 25
+
+        count_box = random.randint(3, 6)
+        for j in range(count_box):
+            x_size, y_size = random.randint(min_size, max_size), random.randint(min_size, max_size)
+            x_rnd, y_rnd = random.randint(0, img_corr.shape[0] - x_size), random.randint(0, img_corr.shape[1] - y_size)
+            img_corr[x_rnd:x_rnd + x_size, y_rnd:y_rnd + y_size, :] = 0
+
 
         # Теперь также возвращаем коррелируемое изображение
         return img_gt, img_lq, img_corr

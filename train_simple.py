@@ -279,7 +279,7 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         # Учитываем ли корреляцию при подсчете лосса генератора
         correlation_consider = True # По умолчанию
         # Если сработает то заменяем корреляционное изображние - пустым, и не учитываем при подсчете лосса генератора
-        if True:#np.random.uniform() < zero_correlation_chance:
+        if False:#np.random.uniform() < zero_correlation_chance:
             correlation_img = torch.zeros_like(correlation_img)
             correlation_consider = False
             print("Пустое корреляционное изображение", flush=True)
@@ -525,8 +525,8 @@ if __name__ == '__main__':
     # size 1024
     # Из-за id_loss минимальный размер по задумке 256
     # Из-за нехватки памяти вынужден переделать id_loss и поставить 64
-    # parser.add_argument('--size', type=int, default=256)
-    parser.add_argument('--size', type=int, default=64)
+    parser.add_argument('--size', type=int, default=256)
+    # parser.add_argument('--size', type=int, default=64)
 
 
 
@@ -558,8 +558,8 @@ if __name__ == '__main__':
     # Параметр для оптимизатора / На какой итерации производится регуляризации генератора
     parser.add_argument('--g_reg_every', type=int, default=4)
     # Логирование в виде изображений и сохранение весов раз в 10000 итераций
-    # parser.add_argument('--save_freq', type=int, default=10000)
-    parser.add_argument('--save_freq', type=int, default=25000)
+    parser.add_argument('--save_freq', type=int, default=10000)
+    # parser.add_argument('--save_freq', type=int, default=25000)
     # Параметр для оптимизатора
     parser.add_argument('--lr', type=float, default=0.002)
 
@@ -576,7 +576,8 @@ if __name__ == '__main__':
 
 
     # parser.add_argument('--pretrain', type=str, default=None)
-    parser.add_argument('--pretrain', type=str, default='ckpts/050000.pth')
+    # parser.add_argument('--pretrain', type=str, default='ckpts/050000.pth')
+    parser.add_argument('--pretrain', type=str, default=None)
 
 
 
@@ -630,7 +631,7 @@ if __name__ == '__main__':
 
     # Стартовая итерация
     # Видимо, для пауз процесса обучения
-    args.start_iter = 50001
+    args.start_iter = 0
 
 
 
