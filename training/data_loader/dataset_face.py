@@ -14,16 +14,16 @@ import degradations
 class GFPGAN_degradation(object):
     def __init__(self):
         self.kernel_list = ['iso', 'aniso']
-        # self.kernel_prob = [0.5, 0.5]
-        # self.blur_kernel_size = 41
-        # self.blur_sigma = [0.1, 10]
-        # self.downsample_range = [0.8, 8]
-        # self.noise_range = [0, 20]
-        # self.jpeg_range = [60, 100]
-        # self.gray_prob = 0.2
-        # self.color_jitter_prob = 0.0
-        # self.color_jitter_pt_prob = 0.0
-        # self.shift = 20/255.
+        self.kernel_prob = [0.5, 0.5]
+        self.blur_kernel_size = 41
+        self.blur_sigma = [0.1, 10]
+        self.downsample_range = [0.8, 8]
+        self.noise_range = [0, 20]
+        self.jpeg_range = [60, 100]
+        self.gray_prob = 0.2
+        self.color_jitter_prob = 0.0
+        self.color_jitter_pt_prob = 0.0
+        self.shift = 20/255.
 
         # self.kernel_prob = [0.25, 0.25]
         # self.blur_kernel_size = 21
@@ -37,17 +37,17 @@ class GFPGAN_degradation(object):
         # self.color_jitter_pt_prob = 0.0
         # self.shift = 20 / 255.
 
-        self.kernel_prob = [0.13, 0.13]
-        self.blur_kernel_size = 13
-        self.blur_sigma = [0.03, 3]
-        self.downsample_range = [0.2, 3]
-        self.noise_range = [0, 10]
-        self.jpeg_range = [60, 100]
-
-        self.gray_prob = 0.2
-        self.color_jitter_prob = 0.0
-        self.color_jitter_pt_prob = 0.0
-        self.shift = 20 / 255.
+        # self.kernel_prob = [0.13, 0.13]
+        # self.blur_kernel_size = 13
+        # self.blur_sigma = [0.03, 3]
+        # self.downsample_range = [0.2, 3]
+        # self.noise_range = [0, 10]
+        # self.jpeg_range = [60, 100]
+        #
+        # self.gray_prob = 0.2
+        # self.color_jitter_prob = 0.0
+        # self.color_jitter_pt_prob = 0.0
+        # self.shift = 20 / 255.
 
     # Изменения также необходимы коррелируемому изображению
     def degrade_process(self, img_gt, img_corr):
@@ -143,8 +143,8 @@ class GFPGAN_degradation(object):
         # Количество квадратов (Максимум 6, Минимум 3)
         # Ширина высота (Максимум 90, минимум 40)
 
-        min_size = 10
-        max_size = 25
+        min_size = 40
+        max_size = 110
 
         count_box = random.randint(3, 6)
         for j in range(count_box):
