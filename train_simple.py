@@ -275,11 +275,11 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         degraded_img, real_img, correlation_img = next(loader)
 
         # Вероятность получить черное изображение в место коррелируемого (На первый раз пробуем 50% шанс)
-        zero_correlation_chance = 0.5
+        zero_correlation_chance = 0.33
         # Учитываем ли корреляцию при подсчете лосса генератора
         correlation_consider = True # По умолчанию
         # Если сработает то заменяем корреляционное изображние - пустым, и не учитываем при подсчете лосса генератора
-        if False:#np.random.uniform() < zero_correlation_chance:
+        if np.random.uniform() < zero_correlation_chance:
             correlation_img = torch.zeros_like(correlation_img)
             correlation_consider = False
             print("Пустое корреляционное изображение", flush=True)
