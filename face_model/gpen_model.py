@@ -748,23 +748,23 @@ class FullGenerator(nn.Module):
     ):
         # Наша предобработка
         # На вход должны приходить previous_inputs current_inputs
-        print("DO correlation_inputs ->", correlation_inputs.shape, flush=True)
-        print(self.features_map_linear.weight.dtype, flush=True)
-        print(correlation_inputs.dtype, flush=True)
+        # print("DO correlation_inputs ->", correlation_inputs.shape, flush=True)
+        # print(self.features_map_linear.weight.dtype, flush=True)
+        # print(correlation_inputs.dtype, flush=True)
         correlation_inputs = self.features_map_linear(correlation_inputs)
-        print("POSLE LINEAR correlation_inputs ->", correlation_inputs.shape, flush=True)
+        # print("POSLE LINEAR correlation_inputs ->", correlation_inputs.shape, flush=True)
         correlation_inputs = torch.reshape(correlation_inputs, (correlation_inputs.shape[0], 1, self.features_map_size * 2, self.features_map_size * 2))
-        print("POSLE RESHAPE correlation_inputs ->", correlation_inputs.shape, flush=True)
+        # print("POSLE RESHAPE correlation_inputs ->", correlation_inputs.shape, flush=True)
         correlation_inputs = self.CONV_FEATURES(correlation_inputs)
-        print("POSLE CONV correlation_inputs ->", correlation_inputs.shape, flush=True)
+        # print("POSLE CONV correlation_inputs ->", correlation_inputs.shape, flush=True)
         correlation_inputs = torch.reshape(correlation_inputs, (correlation_inputs.shape[0], 1, int(self.features_map_size * 2 * math.sqrt(correlation_inputs.shape[1])), int(self.features_map_size * 2 * math.sqrt(correlation_inputs.shape[1]))))
-        print("POSLE RESHAPE correlation_inputs ->", correlation_inputs.shape, flush=True)
-        print("DO CAT inputs ->", inputs.shape, flush=True)
+        # print("POSLE RESHAPE correlation_inputs ->", correlation_inputs.shape, flush=True)
+        # print("DO CAT inputs ->", inputs.shape, flush=True)
         # Внедряем корреляционный вход
         inputs = torch.cat((correlation_inputs, inputs), dim=1)
-        print("POSLE CAT inputs ->", inputs.shape, flush=True)
+        # print("POSLE CAT inputs ->", inputs.shape, flush=True)
         inputs = self.CONV_FEATURES_AND_IMAGE(inputs)
-        print("POSLE CONV inputs ->", inputs.shape, flush=True)
+        # print("POSLE CONV inputs ->", inputs.shape, flush=True)
 
         # Для чего шум - не ясно
         noise = []

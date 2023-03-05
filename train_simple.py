@@ -329,12 +329,7 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         else:
             print("Не пустое корреляционное изображение", flush=True)
 
-
-
-
-
-
-
+        correlation_img = correlation_img.to(device)
         correlation_features = correlation_features.to(device)
         degraded_img = degraded_img.to(device)
         real_img = real_img.to(device)
