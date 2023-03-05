@@ -25,36 +25,11 @@ class GFPGAN_degradation(object):
         self.color_jitter_pt_prob = 0.0
         self.shift = 20/255.
 
-        # self.kernel_prob = [0.25, 0.25]
-        # self.blur_kernel_size = 21
-        # self.blur_sigma = [0.05, 5]
-        # self.downsample_range = [0.4, 4]
-        # self.noise_range = [0, 10]
-        # self.jpeg_range = [30, 50]
-        #
-        # self.gray_prob = 0.2
-        # self.color_jitter_prob = 0.0
-        # self.color_jitter_pt_prob = 0.0
-        # self.shift = 20 / 255.
-
-        # self.kernel_prob = [0.13, 0.13]
-        # self.blur_kernel_size = 13
-        # self.blur_sigma = [0.03, 3]
-        # self.downsample_range = [0.2, 3]
-        # self.noise_range = [0, 10]
-        # self.jpeg_range = [60, 100]
-        #
-        # self.gray_prob = 0.2
-        # self.color_jitter_prob = 0.0
-        # self.color_jitter_pt_prob = 0.0
-        # self.shift = 20 / 255.
-
     # Изменения также необходимы коррелируемому изображению
     def degrade_process(self, img_gt, img_corr):
         if random.random() > 0.5:
             # Также поворачиваем коррелируемое изображение
             img_corr = cv2.flip(img_corr, 1)
-
             img_gt = cv2.flip(img_gt, 1)
 
         # У коррелируемого изображения такиеже размеры
@@ -109,49 +84,6 @@ class GFPGAN_degradation(object):
 
         # resize to original size
         img_lq = cv2.resize(img_lq, (w, h), interpolation=cv2.INTER_LINEAR)
-
-        # ------------------------ generate corr-lq image ------------------------ #
-        # blur
-        kernel = degradations.random_mixed_kernels(
-            self.kernel_list,
-            self.kernel_prob,
-            self.blur_kernel_size,
-            self.blur_sigma,
-            self.blur_sigma, [-math.pi, math.pi],
-            noise_range=None)
-
-        # Образуется от самого себя
-        img_corr = cv2.filter2D(img_corr, -1, kernel)
-
-        # downsample
-        # scale = np.random.uniform(self.downsample_range[0]/2, self.downsample_range[1]/2)
-        # img_corr = cv2.resize(img_corr, (int(w // scale), int(h // scale)), interpolation=cv2.INTER_LINEAR)
-
-        # noise
-        if self.noise_range is not None:
-            img_corr = degradations.random_add_gaussian_noise(img_corr, self.noise_range)
-        # jpeg compression
-        if self.jpeg_range is not None:
-            img_corr = degradations.random_add_jpg_compression(img_corr, self.jpeg_range)
-
-        # round and clip
-        # img_corr = np.clip((img_corr * 255.0).round(), 0, 255) / 255.
-
-        # resize to original size
-        # img_corr = cv2.resize(img_corr, (w, h), interpolation=cv2.INTER_LINEAR)
-
-        # Количество квадратов (Максимум 6, Минимум 3)
-        # Ширина высота (Максимум 90, минимум 40)
-
-        min_size = 40
-        max_size = 110
-
-        count_box = random.randint(3, 6)
-        for j in range(count_box):
-            x_size, y_size = random.randint(min_size, max_size), random.randint(min_size, max_size)
-            x_rnd, y_rnd = random.randint(0, img_corr.shape[0] - x_size), random.randint(0, img_corr.shape[1] - y_size)
-            img_corr[x_rnd:x_rnd + x_size, y_rnd:y_rnd + y_size, :] = 0
-
 
         # Теперь также возвращаем коррелируемое изображение
         return img_gt, img_lq, img_corr
@@ -221,6 +153,13 @@ class FaceDataset(Dataset):
         # DO resize -> (512, 512, 3)
         # POSLE resize -> (64, 64, 3)
         # print("DO resize ->", img_corr.shape)
+
+
+
+
+
+
+
         # Также изменяем размер коррелируемого изображения
         img_corr = cv2.resize(img_corr, (self.resolution, self.resolution), interpolation=cv2.INTER_AREA)
         img_gt = cv2.resize(img_gt, (self.resolution, self.resolution), interpolation=cv2.INTER_AREA)
@@ -241,6 +180,7 @@ class FaceDataset(Dataset):
         # Деградация данных играет ключевую роль в BFR. Пожалуйста, замените его своими методами.
 
         # Таким же образом нормализуем коррелируемое изображение
+        # print(type(img_corr[0][0][0]))#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         img_corr = img_corr.astype(np.float32)/255.
         img_gt = img_gt.astype(np.float32)/255.
 
@@ -253,14 +193,10 @@ class FaceDataset(Dataset):
         img_gt =  (torch.from_numpy(img_gt) - 0.5) / 0.5
         img_lq =  (torch.from_numpy(img_lq) - 0.5) / 0.5
 
-
-
         # Повторяем манипуляции
         img_corr = img_corr.permute(2, 0, 1).flip(0)  # BGR->RGB
         img_gt = img_gt.permute(2, 0, 1).flip(0) # BGR->RGB
         img_lq = img_lq.permute(2, 0, 1).flip(0) # BGR->RGB
-
-
 
         # print("3 img_gt", img_gt.shape)
         # Теперь также возвращаем и коррелируемое изображение

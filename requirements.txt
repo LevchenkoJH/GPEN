@@ -8,3 +8,5 @@ scipy
 pillow
 tqdm
 matplotlib
+ftfy
+regex

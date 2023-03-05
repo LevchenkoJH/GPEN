@@ -698,14 +698,22 @@ class FullGenerator(nn.Module):
         # Разобрать!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         # ПОПРОБУЕМ ДОБАВИТЬ ЗДЕСЬ
+
+        # [2, 1024] (32, 32)
+        # [2, 4096] (64, 64)
+        # Зависит от модели CLIP
+        self.features_map_size = 32
+        # print(self.features_map_size * self.features_map_size, self.features_map_size * self.features_map_size * 4)
+        self.features_map_linear = nn.Linear(self.features_map_size * self.features_map_size, self.features_map_size * self.features_map_size * 4)
+        # Нужен один слой конволюции
+        # От [2, 1, 64, 64] перейти к
+        # [2, 1, 256, 256]
+        size_conv = size // self.features_map_size // 2
+        self.CONV_FEATURES = nn.Conv2d(in_channels=1, out_channels=size_conv*size_conv, kernel_size=3, stride=1, padding=1)
         # Нужен один слой конволюции
         # От [2, 6, 64, 64] перейти к
         # [2, 3, 64, 64]
-        conv = ConvLayer(6, 3, 1, device=device)
-        self.MY_NEW_CONV = nn.Sequential(*conv)
-
-
-
+        self.CONV_FEATURES_AND_IMAGE = nn.Conv2d(in_channels=4, out_channels=3, kernel_size=3, stride=1, padding=1)
 
         # Первая свертка задается отдельно
         # in_channel = 3, скорее всего из-за RGB
@@ -738,40 +746,25 @@ class FullGenerator(nn.Module):
         truncation_latent=None,
         input_is_latent=False,
     ):
-
-        # Проверка корреляционного входа
-        # print("correlation_inputs ->", correlation_inputs.shape)
-        #
-        # print("inputs ->", inputs.shape)
-        #
-        # print("correlation_inputs ->", correlation_inputs)
-        #
-        # print("inputs ->", inputs)
-
-
         # Наша предобработка
         # На вход должны приходить previous_inputs current_inputs
-
-        # ДЛЯ ТЕСТИРОВАНИЯ, ВРЕМЕННО ОНИ ОДИНАКОВЫ
-        # torch.Size([2, 6, 64, 64])
-
-
-        # ЗАКАНЧИВАЕМ ТЕСТИРОВАНИЕ
+        print("DO correlation_inputs ->", correlation_inputs.shape, flush=True)
+        print(self.features_map_linear.weight.dtype, flush=True)
+        print(correlation_inputs.dtype, flush=True)
+        correlation_inputs = self.features_map_linear(correlation_inputs)
+        print("POSLE LINEAR correlation_inputs ->", correlation_inputs.shape, flush=True)
+        correlation_inputs = torch.reshape(correlation_inputs, (correlation_inputs.shape[0], 1, self.features_map_size * 2, self.features_map_size * 2))
+        print("POSLE RESHAPE correlation_inputs ->", correlation_inputs.shape, flush=True)
+        correlation_inputs = self.CONV_FEATURES(correlation_inputs)
+        print("POSLE CONV correlation_inputs ->", correlation_inputs.shape, flush=True)
+        correlation_inputs = torch.reshape(correlation_inputs, (correlation_inputs.shape[0], 1, int(self.features_map_size * 2 * math.sqrt(correlation_inputs.shape[1])), int(self.features_map_size * 2 * math.sqrt(correlation_inputs.shape[1]))))
+        print("POSLE RESHAPE correlation_inputs ->", correlation_inputs.shape, flush=True)
+        print("DO CAT inputs ->", inputs.shape, flush=True)
         # Внедряем корреляционный вход
         inputs = torch.cat((correlation_inputs, inputs), dim=1)
-
-
-        # print("test_inputs -> ", test_inputs.shape)
-
-        # torch.Size([2, 3, 64, 64])
-        inputs = self.MY_NEW_CONV(inputs)
-        # print("test_inputs ->", test_inputs.shape)
-
-
-
-
-
-
+        print("POSLE CAT inputs ->", inputs.shape, flush=True)
+        inputs = self.CONV_FEATURES_AND_IMAGE(inputs)
+        print("POSLE CONV inputs ->", inputs.shape, flush=True)
 
         # Для чего шум - не ясно
         noise = []

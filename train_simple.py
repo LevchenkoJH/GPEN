@@ -35,8 +35,9 @@ from distributed import (
 
 from training import lpips
 
-from сoefficients import kendall_coefficient
 import numpy as np
+import clip
+from PIL import Image
 
 # shuffle - перемешивать
 # distributed - распределенный
@@ -111,7 +112,8 @@ def d_r1_loss(real_pred, real_img):
     return grad_penalty
 
 # g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img)
-def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=None, input_img=None, correlation_img=None, correlation_consider=True, device='cuda'):
+def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=None, input_img=None, correlation_features=None,
+                         correlation_consider=True, clip_model=None, clip_preprocess=None, device='cuda'):
     # print("--------------------------------------------g_nonsaturating_loss-------------------------------------------")
     # fake_pred -> torch.Size([2, 1])
     # fake_img -> torch.Size([2, 3, 64, 64])
@@ -143,23 +145,38 @@ def g_nonsaturating_loss(fake_pred, loss_funcs=None, fake_img=None, real_img=Non
 
 
 
-    # Добавляем новую функцию потерь основанную на КОРРЕЛЯЦИИ
-    # print("real_img ->", type(real_img))
-    # print("correlation_img ->", type(correlation_img))
+
+
+    # Добавляем новую функцию потерь основанную на КОРРЕЛЯЦИИ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     loss_correlation = torch.tensor(0.0, device=device)
     if correlation_consider:
-        corr_between_real_corr = kendall_coefficient(real_img, correlation_img, device=device, prin=True)
-        corr_between_fake_corr = kendall_coefficient(fake_img, correlation_img, device=device, prin=True)
-        loss_correlation = corr_between_real_corr - corr_between_fake_corr
-    loss_correlation = F.leaky_relu(6.0*loss_correlation).mean()
+        correlation_features = correlation_features
+        real_features = get_clip_image_features(real_img.detach().cpu().numpy(), clip_model, clip_preprocess)
+        fake_features = get_clip_image_features(fake_img.detach().cpu().numpy(), clip_model, clip_preprocess)
+
+        cos = torch.nn.CosineSimilarity(dim=1)
+        corr_between_real_corr = cos(real_features, correlation_features)#[0]
+        corr_between_fake_corr = cos(fake_features, correlation_features)#[0]
+
+        loss_correlation = torch.abs(corr_between_real_corr - corr_between_fake_corr)
+        # print("loss_correlation ->", loss_correlation, flush=True)
+    loss_correlation = loss_correlation.mean()
+    print("loss_correlation ->", loss_correlation, flush=True)
+
+
+
+
+
+
+
 
     # print("corr_between_real_corr ->", corr_between_real_corr)
 
     # print("loss_id ->", type(loss_id))
     # print("loss_id ->", loss_id)
     # print("loss_correlation ->", type(loss_correlation))
-    print("loss_correlation ->", loss_correlation, flush=True)
+    # print("loss_correlation ->", loss_correlation, flush=True)
 
     # Увеличиваем коэффициент перед слагаемым отвечающим за корреляцию
     loss += 1.0*loss_l1 + 1.0*loss_id + 1.0*loss_correlation
@@ -217,8 +234,35 @@ def validation(model, lpips_func, args, device):
     
     return dist_sum.data/len(lq_files)
 
+def get_clip_image_features(correlation_img, clip_model, clip_preprocess):
+    # Обратные проеобразования для правильной формы входа в CLIP
+    correlation_img_copy = correlation_img
+    correlation_img_copy = (correlation_img_copy * 0.5) + 0.5
+    correlation_img_copy = (correlation_img_copy * 255.).astype(np.uint8)
+    correlation_img_copy = correlation_img_copy.transpose(0, 2, 3, 1)
 
-def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_ema, lpips_func, device):
+    with torch.no_grad():
+        # clip_preprocess не поддерживает батчинг
+        clip_image_inputs = []
+        for c_img in correlation_img_copy:
+            pil_img = Image.fromarray(c_img)
+
+            # Prepare the inputs
+            if len(clip_image_inputs) == 0:
+                clip_image_inputs = clip_preprocess(pil_img).unsqueeze(0)
+            else:
+                clip_image_inputs = torch.cat((clip_image_inputs, clip_preprocess(pil_img).unsqueeze(0)))
+
+        clip_image_inputs = clip_image_inputs.to(device)
+
+        # Calculate features
+        clip_image_features = clip_model.encode_image(clip_image_inputs)
+        # print(clip_image_features.shape)
+        # print(type(clip_image_features))
+        # print(clip_image_features)
+        return clip_image_features.to(torch.float32)
+
+def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_ema, lpips_func, clip_model, clip_preprocess, device):
     print("--------------------------------------------TRAIN-------------------------------------------", flush=True)
     # print(torch.cuda.memory_summary(device=device, abbreviated=False))
 
@@ -259,58 +303,49 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
 
         if i > args.iter:
             print('Done!')
-
             break
-
-
-
-
 
         # [4, 3, 256, 256] - сейчас
         # [4, 2, 3, 256, 256] - нужно теперь
-
-
-
-
         degraded_img, real_img, correlation_img = next(loader)
 
+
+        # В место коррелируемого кадра мы теперь хотим отправлять его признаки подсчитаныне с помощью CLIP
+        correlation_features = get_clip_image_features(correlation_img.detach().cpu().numpy(), clip_model, clip_preprocess)
+
+
+
+
         # Вероятность получить черное изображение в место коррелируемого (На первый раз пробуем 50% шанс)
-        zero_correlation_chance = 0.33
+        zero_correlation_chance = 0.20
         # Учитываем ли корреляцию при подсчете лосса генератора
-        correlation_consider = True # По умолчанию
+        correlation_consider = True  # По умолчанию
         # Если сработает то заменяем корреляционное изображние - пустым, и не учитываем при подсчете лосса генератора
         if np.random.uniform() < zero_correlation_chance:
             correlation_img = torch.zeros_like(correlation_img)
+            correlation_features = torch.zeros_like(correlation_features)
             correlation_consider = False
             print("Пустое корреляционное изображение", flush=True)
         else:
             print("Не пустое корреляционное изображение", flush=True)
-        # print("deg", degraded_img.shape)
-        # print("real", real_img.shape)
 
 
 
 
 
-        correlation_img = correlation_img.to(device)
+
+
+        correlation_features = correlation_features.to(device)
         degraded_img = degraded_img.to(device)
         real_img = real_img.to(device)
-
-
-
-
 
         # Сначала градиент касается только дискриминатора
         requires_grad(generator, False)
         requires_grad(discriminator, True)
 
-
-
-
-
         # Второе None
         # На всход генератор должен также получать коррелируемое изображение
-        fake_img, _ = generator(degraded_img, correlation_img)
+        fake_img, _ = generator(degraded_img, correlation_features)
 
 
 
@@ -369,7 +404,7 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         requires_grad(discriminator, False)
 
         # Добавляем корреляционный вход
-        fake_img, _ = generator(degraded_img, correlation_img)
+        fake_img, _ = generator(degraded_img, correlation_features)
         # print("generator (fake_img) ->", fake_img.shape)
         fake_pred = discriminator(fake_img)
         # print("discriminator (fake_pred) ->", fake_pred.shape)
@@ -379,7 +414,10 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
         # print("In", fake_pred.shape, fake_img.shape, real_img.shape, degraded_img.shape)
         # Добавляем в лосс генератора КОРРЕЛЯЦИЮ
         # Добавляем корреляционный вход
-        g_loss, loss_correlation = g_nonsaturating_loss(fake_pred, losses, fake_img, real_img, degraded_img, correlation_img=correlation_img, correlation_consider=correlation_consider, device=device)
+        g_loss, loss_correlation = g_nonsaturating_loss(
+            fake_pred, losses, fake_img, real_img, degraded_img,
+            correlation_features=correlation_features, correlation_consider=correlation_consider,
+            clip_model=clip_model, clip_preprocess=clip_preprocess, device=device)
         ##############################################################################################################
         loss_dict['g'] = g_loss
         loss_dict['corr'] = loss_correlation
@@ -395,7 +433,7 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
 
 
             # Добавляем корреляционный вход
-            fake_img, latents = generator(degraded_img, correlation_img, return_latents=True)
+            fake_img, latents = generator(degraded_img, correlation_features, return_latents=True)
             ##############################################################################################################
             path_loss, mean_path_length, path_lengths = g_path_regularize(
                 fake_img, latents, mean_path_length
@@ -449,7 +487,7 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
                     g_ema.eval()
 
                     # Добавляем корреляционный вход
-                    sample, _ = g_ema(degraded_img, correlation_img)
+                    sample, _ = g_ema(degraded_img, correlation_features)
                     # print("SAMPLE 1", sample.shape)
                     sample = torch.cat((correlation_img, degraded_img, sample, real_img), 0)
                     # print("SAMPLE 2", sample.shape)
@@ -500,10 +538,8 @@ if __name__ == '__main__':
 
     # Желательно знать для чего нужен каждый аргумент
     print("PARSER", flush=True)
-
     # path your_path_of_croped+aligned_hq_faces
     parser.add_argument('--path', type=str, default='examples/test_dataset')
-
     parser.add_argument('--base_dir', type=str, default='./')
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     parser.add_argument('--iter', type=int, default=300000)
@@ -576,8 +612,8 @@ if __name__ == '__main__':
 
 
     # parser.add_argument('--pretrain', type=str, default=None)
-    parser.add_argument('--pretrain', type=str, default='ckpts/010000.pth')
-    # parser.add_argument('--pretrain', type=str, default=None)
+    # parser.add_argument('--pretrain', type=str, default='ckpts/010000.pth')
+    parser.add_argument('--pretrain', type=str, default=None)
 
 
 
@@ -631,7 +667,7 @@ if __name__ == '__main__':
 
     # Стартовая итерация
     # Видимо, для пауз процесса обучения
-    args.start_iter = 10001
+    args.start_iter = 0
 
 
 
@@ -727,5 +763,7 @@ if __name__ == '__main__':
         drop_last=True,
     )
 
-    train(args, loader, generator, discriminator, [smooth_l1_loss, id_loss], g_optim, d_optim, g_ema, lpips_func, device)
+    clip_model, clip_preprocess = clip.load('RN50', device)
+
+    train(args, loader, generator, discriminator, [smooth_l1_loss, id_loss], g_optim, d_optim, g_ema, lpips_func, clip_model, clip_preprocess, device)
     # def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_ema, lpips_func, device):

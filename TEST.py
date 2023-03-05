@@ -4,8 +4,8 @@
 # import glob
 #
 #
-# # path = '/home/jasmine/VGGFace2-HQ/Data/VGGface2_FFHQalign'
-# path = '/home/levchenkone/GITHUB/GPEN/examples/test_dataset'
+# path = '/home/jasmine/VGGFace2-HQ/Data/VGGface2_FFHQalign'
+# # path = '/home/levchenkone/GITHUB/GPEN/examples/test_dataset'
 #
 # HQ_imgs = glob.glob(os.path.join(path, '*', '*coef*'))
 #
@@ -41,8 +41,8 @@
 #     print(name)
 #     # os.rename(name, name[0:-12])
 #########################################################################################################################
-import numpy as np
-
-for i in range(10):
-    print(np.random.uniform(), np.random.uniform())
+# import numpy as np
+#
+# for i in range(10):
+#     print(np.random.uniform(), np.random.uniform())
 #########################################################################################################################
