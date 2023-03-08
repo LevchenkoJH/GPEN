@@ -317,7 +317,7 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
 
 
         # Вероятность получить черное изображение в место коррелируемого (На первый раз пробуем 50% шанс)
-        zero_correlation_chance = 0.20
+        zero_correlation_chance = 0.50
         # Учитываем ли корреляцию при подсчете лосса генератора
         correlation_consider = True  # По умолчанию
         # Если сработает то заменяем корреляционное изображние - пустым, и не учитываем при подсчете лосса генератора
@@ -607,8 +607,8 @@ if __name__ == '__main__':
 
 
     # parser.add_argument('--pretrain', type=str, default=None)
-    # parser.add_argument('--pretrain', type=str, default='ckpts/010000.pth')
-    parser.add_argument('--pretrain', type=str, default=None)
+    parser.add_argument('--pretrain', type=str, default='ckpts/050000.pth')
+    # parser.add_argument('--pretrain', type=str, default=None)
 
 
 
@@ -662,7 +662,7 @@ if __name__ == '__main__':
 
     # Стартовая итерация
     # Видимо, для пауз процесса обучения
-    args.start_iter = 0
+    args.start_iter = 50001
 
 
 
