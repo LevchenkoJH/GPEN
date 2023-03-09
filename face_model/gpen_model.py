@@ -653,12 +653,6 @@ class ResBlock(nn.Module):
 
         return out
 
-# Начали разбор
-# ('--size', type=int, default=256)
-# args.latent = 512
-# args.n_mlp = 8
-# ('--channel_multiplier', type=int, default=2)
-# ('--narrow', type=float, default=1.0)
 class FullGenerator(nn.Module):
     def __init__(
         self,
@@ -672,7 +666,6 @@ class FullGenerator(nn.Module):
         narrow=1,
         device='cpu'
     ):
-        # print("Generator init")
         super().__init__()
         channels = {
             4: int(512 * narrow), # 1024
@@ -687,38 +680,13 @@ class FullGenerator(nn.Module):
             2048: int(8 * channel_multiplier * narrow) # 16
         }
 
-        # log_size -> 6
         self.log_size = int(math.log(size, 2))
-        # print("log_size ->", self.log_size)
-
-        # print(self.log_size)
-        # Разобрать!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         self.generator = Generator(size, style_dim, n_mlp, channel_multiplier=channel_multiplier, blur_kernel=blur_kernel, lr_mlp=lr_mlp, isconcat=isconcat, narrow=narrow, device=device)
-
-        # Разобрать!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-        # ПОПРОБУЕМ ДОБАВИТЬ ЗДЕСЬ
-
-        # [2, 1024] (32, 32)
-        # [2, 4096] (64, 64)
-        # Зависит от модели CLIP
         self.features_map_size = 32
-        # print(self.features_map_size * self.features_map_size, self.features_map_size * self.features_map_size * 4)
         self.features_map_linear = nn.Linear(self.features_map_size * self.features_map_size, self.features_map_size * self.features_map_size * 4)
-        # Нужен один слой конволюции
-        # От [2, 1, 64, 64] перейти к
-        # [2, 1, 256, 256]
         size_conv = size // self.features_map_size // 2
         self.CONV_FEATURES = nn.Conv2d(in_channels=1, out_channels=size_conv*size_conv, kernel_size=3, stride=1, padding=1)
-        # Нужен один слой конволюции
-        # От [2, 6, 64, 64] перейти к
-        # [2, 3, 64, 64]
         self.CONV_FEATURES_AND_IMAGE = nn.Conv2d(in_channels=4, out_channels=3, kernel_size=3, stride=1, padding=1)
-
-        # Первая свертка задается отдельно
-        # in_channel = 3, скорее всего из-за RGB
-        # out_channel = channels[size] (128),
-        # kernel_size = 1,
         conv = [ConvLayer(3, channels[size], 1, device=device)]
         self.ecd0 = nn.Sequential(*conv)
         in_channel = channels[size]
@@ -726,15 +694,9 @@ class FullGenerator(nn.Module):
         self.names = ['ecd%d'%i for i in range(self.log_size-1)]
         for i in range(self.log_size, 2, -1):
             out_channel = channels[2 ** (i - 1)]
-            # print('i', i, 'size', 2 ** (i - 1), 'out_channel', out_channel)
-            #conv = [ResBlock(in_channel, out_channel, blur_kernel)]
-            # print('in_channel', in_channel, 'out_channel', out_channel)
             conv = [ConvLayer(in_channel, out_channel, 3, downsample=True, device=device)]
-            # setattr(x, 'y', v) is equivalent to ``x.y = v''
             setattr(self, self.names[self.log_size-i+1], nn.Sequential(*conv))
-            # print(self.names[self.log_size-i+1])
             in_channel = out_channel
-        # Разобрать!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         self.final_linear = nn.Sequential(EqualLinear(channels[4] * 4 * 4, style_dim, activation='fused_lrelu', device=device))
 
     def forward(self,
@@ -746,119 +708,23 @@ class FullGenerator(nn.Module):
         truncation_latent=None,
         input_is_latent=False,
     ):
-        # Наша предобработка
-        # На вход должны приходить previous_inputs current_inputs
-        # print("DO correlation_inputs ->", correlation_inputs.shape, flush=True)
-        # print(self.features_map_linear.weight.dtype, flush=True)
-        # print(correlation_inputs.dtype, flush=True)
         correlation_inputs = self.features_map_linear(correlation_inputs)
-        # print("POSLE LINEAR correlation_inputs ->", correlation_inputs.shape, flush=True)
         correlation_inputs = torch.reshape(correlation_inputs, (correlation_inputs.shape[0], 1, self.features_map_size * 2, self.features_map_size * 2))
-        # print("POSLE RESHAPE correlation_inputs ->", correlation_inputs.shape, flush=True)
         correlation_inputs = self.CONV_FEATURES(correlation_inputs)
-        # print("POSLE CONV correlation_inputs ->", correlation_inputs.shape, flush=True)
         correlation_inputs = torch.reshape(correlation_inputs, (correlation_inputs.shape[0], 1, int(self.features_map_size * 2 * math.sqrt(correlation_inputs.shape[1])), int(self.features_map_size * 2 * math.sqrt(correlation_inputs.shape[1]))))
-        # print("POSLE RESHAPE correlation_inputs ->", correlation_inputs.shape, flush=True)
-        # print("DO CAT inputs ->", inputs.shape, flush=True)
-        # Внедряем корреляционный вход
         inputs = torch.cat((correlation_inputs, inputs), dim=1)
-        # print("POSLE CAT inputs ->", inputs.shape, flush=True)
         inputs = self.CONV_FEATURES_AND_IMAGE(inputs)
-        # print("POSLE CONV inputs ->", inputs.shape, flush=True)
 
-        # Для чего шум - не ясно
         noise = []
-        # Проходим по сверточным слоям
         for i in range(self.log_size-1):
             # Получаем слой
             ecd = getattr(self, self.names[i])
-
-            # Проверить размерности входа выхода каждого слоя
-
-            # SLOY 0
-            # DO
-            # torch.Size([2, 3, 64, 64])
-            # POSLE
-            # torch.Size([2, 256, 64, 64])
-            # SLOY 1
-            # DO
-            # torch.Size([2, 256, 64, 64])
-            # POSLE
-            # torch.Size([2, 512, 32, 32])
-            # SLOY 2
-            # DO
-            # torch.Size([2, 512, 32, 32])
-            # POSLE
-            # torch.Size([2, 512, 16, 16])
-            # SLOY 3
-            # DO
-            # torch.Size([2, 512, 16, 16])
-            # POSLE
-            # torch.Size([2, 512, 8, 8])
-            # SLOY 4
-            # DO
-            # torch.Size([2, 512, 8, 8])
-            # POSLE
-            # torch.Size([2, 512, 4, 4])
-            # print("SLOY", i)
-            # print("DO", inputs.shape)
-            # Получаем его выход
             inputs = ecd(inputs)
-            # print("POSLE", inputs.shape)
-
-
-
-
-
-            # В шум отправляется выход каждого слоя
-            # print("IN NOISE", inputs.shape)
             noise.append(inputs)
-            # print("INPUTS SHAPE", noise)
 
-
-
-
-
-        # Возвращает новый тензор с теми же данными, что и self-тензор, но с другим shape.
-        # Изменение размера тентора, для чего - не ясно
-
-        # DO
-        # torch.Size([2, 512, 4, 4])
-        # POSLE
-        # torch.Size([2, 8192])
-
-        # print("DO", inputs.shape)
         inputs = inputs.view(inputs.shape[0], -1)
-        # print("POSLE", inputs.shape)
-
-
-        # Последний уже линейный слой
-        # POSLE
-        # LINEYNOGO
-        # torch.Size([2, 512])
         outs = self.final_linear(inputs)
-        # print("POSLE LINEYNOGO", outs.shape)
-
-
-        # Не уверен
-        # repeat(10, 3) --> 10 10 10
-        # chained = chain.from_iterable(('ab', [33]))
-        #     next(chained)  # a
-        #     next(chained)  # b
-        #     next(chained)  # 33
-        # Способ обхода цикла
-        # Получение шума для генератора
-
-        # Для примера
-        # Было
-        # noise = [[1, 2, 3], [4, 5], [6]]
         noise = list(itertools.chain.from_iterable(itertools.repeat(x, 2) for x in noise))[::-1]
-        # Стало
-        # [[6], [6], [4, 5], [4, 5], [1, 2, 3], [1, 2, 3]]
-
-
-        # Шум и выход отправляются в генератор
-        # Шум формируется на основании промежуточных выходов сверточных слоев
         outs = self.generator([outs], return_latents, inject_index, truncation, truncation_latent, input_is_latent, noise=noise[1:])
         return outs
 
@@ -952,6 +818,8 @@ class FullGenerator_SR(nn.Module):
 
         self.log_insize = int(math.log(in_size, 2))
         self.log_outsize = int(math.log(out_size, 2))
+        # В FullGenerator в место out_size идет size
+        # Вообще там нет никаких in_size out_size только size
         self.generator = Generator(out_size, style_dim, n_mlp, channel_multiplier=channel_multiplier, blur_kernel=blur_kernel, lr_mlp=lr_mlp, isconcat=isconcat, narrow=narrow, device=device)
 
         conv = [ConvLayer(3, channels[in_size], 1, device=device)]
@@ -989,3 +857,34 @@ class FullGenerator_SR(nn.Module):
         noise = list(itertools.chain.from_iterable(itertools.repeat(x, 2) for x in noise))[::-1]
         image, latent = self.generator([outs], return_latents, inject_index, truncation, truncation_latent, input_is_latent, noise=noise[1:])
         return image, latent
+
+
+
+    def forward(self,
+        inputs,
+        correlation_inputs,
+        return_latents=False,
+        inject_index=None,
+        truncation=1,
+        truncation_latent=None,
+        input_is_latent=False,
+    ):
+        correlation_inputs = self.features_map_linear(correlation_inputs)
+        correlation_inputs = torch.reshape(correlation_inputs, (correlation_inputs.shape[0], 1, self.features_map_size * 2, self.features_map_size * 2))
+        correlation_inputs = self.CONV_FEATURES(correlation_inputs)
+        correlation_inputs = torch.reshape(correlation_inputs, (correlation_inputs.shape[0], 1, int(self.features_map_size * 2 * math.sqrt(correlation_inputs.shape[1])), int(self.features_map_size * 2 * math.sqrt(correlation_inputs.shape[1]))))
+        inputs = torch.cat((correlation_inputs, inputs), dim=1)
+        inputs = self.CONV_FEATURES_AND_IMAGE(inputs)
+
+        noise = []
+        for i in range(self.log_size-1):
+            # Получаем слой
+            ecd = getattr(self, self.names[i])
+            inputs = ecd(inputs)
+            noise.append(inputs)
+
+        inputs = inputs.view(inputs.shape[0], -1)
+        outs = self.final_linear(inputs)
+        noise = list(itertools.chain.from_iterable(itertools.repeat(x, 2) for x in noise))[::-1]
+        outs = self.generator([outs], return_latents, inject_index, truncation, truncation_latent, input_is_latent, noise=noise[1:])
+        return outs
