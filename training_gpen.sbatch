@@ -9,5 +9,5 @@
 
 source venv/bin/activate
 
-python TEST.py
+python train_simple.py
 
