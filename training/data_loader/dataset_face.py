@@ -96,7 +96,7 @@ class FaceDataset(Dataset):
 
 
 
-        self.HQ_imgs = glob.glob(os.path.join(path, '*', '*coef*'))#glob.glob(os.path.join(path, '*.*'))
+        self.HQ_imgs = glob.glob(os.path.join(path, '*', '*'))#glob.glob(os.path.join(path, '*.*'))
 
         # self.test_ = glob.glob(os.path.join(test_path, '*', '*coef*'))
 
