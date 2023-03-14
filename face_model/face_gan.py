@@ -38,14 +38,29 @@ class FaceGAN(object):
         self.model.to(self.device)
         self.model.eval()
 
-    def process(self, img):
+    def process(self, corr_img, img):
+
+        # Корреляционное изображение такогоже размера как и восстанавливаемое
+        # corr_img = cv2.resize(corr_img, (self.in_resolution, self.in_resolution))
         img = cv2.resize(img, (self.in_resolution, self.in_resolution))
+
+        # corr_img_t = self.img2tensor(corr_img)
         img_t = self.img2tensor(img)
 
+
         with torch.no_grad():
-            out, __ = self.model(img_t)
+            # generator(degraded_img, correlation_features)
+            # Модель - генератор
+
+            print("corr_img_t -> ", corr_img.shape)
+            print("img_t", img_t.shape)
+
+            out, __ = self.model(img_t, corr_img)
+        # Удаляем за ненадобностью
+        # del  corr_img_t
         del img_t
 
+        # Восстановленный кадр
         out = self.tensor2img(out)
 
         return out

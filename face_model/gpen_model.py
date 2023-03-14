@@ -708,7 +708,10 @@ class FullGenerator(nn.Module):
         truncation_latent=None,
         input_is_latent=False,
     ):
+        print("FORWARD correlation_inputs ->", correlation_inputs.shape)
+        print("FORWARD", self.features_map_size * self.features_map_size, self.features_map_size * self.features_map_size * 4)
         correlation_inputs = self.features_map_linear(correlation_inputs)
+        print("FORWARD 2")
         correlation_inputs = torch.reshape(correlation_inputs, (correlation_inputs.shape[0], 1, self.features_map_size * 2, self.features_map_size * 2))
         correlation_inputs = self.CONV_FEATURES(correlation_inputs)
         correlation_inputs = torch.reshape(correlation_inputs, (correlation_inputs.shape[0], 1, int(self.features_map_size * 2 * math.sqrt(correlation_inputs.shape[1])), int(self.features_map_size * 2 * math.sqrt(correlation_inputs.shape[1]))))
