@@ -31,10 +31,12 @@
 # import os
 # import glob
 #
-# path = '/home/jasmine/VGGFace2-HQ/Data/VGGface2_FFHQalign'
+# # path = '/home/jasmine/VGGFace2-HQ/Data/VGGface2_FFHQalign'
+# path = r'D:\GPEN\GPEN\examples\test_dataset'
 #
 # # HQ_imgs = glob.glob(os.path.join(path, '*', '*coef*'))
 # HQ_imgs = glob.glob(os.path.join(path, '*', '*'))
+#
 #
 # print(HQ_imgs)
 # for name in HQ_imgs:
