@@ -45,8 +45,9 @@ def _download(url: str, root: str):
     filename = os.path.basename(url)
 
     expected_sha256 = url.split("/")[-2]
+    print(filename)
     download_target = os.path.join(root, filename)
-
+    print(download_target)
     if os.path.exists(download_target) and not os.path.isfile(download_target):
         raise RuntimeError(f"{download_target} exists and is not a regular file")
 
@@ -119,7 +120,7 @@ def load(name: str, device: Union[str, torch.device] = "cuda" if torch.cuda.is_a
         A torchvision transform that converts a PIL image into a tensor that the returned model can take as its input
     """
     if name in _MODELS:
-        model_path = _download(_MODELS[name], download_root or os.path.expanduser("~/.cache/clip"))
+        model_path = _download(_MODELS[name], download_root or "./weights")
     elif os.path.isfile(name):
         model_path = name
     else:
