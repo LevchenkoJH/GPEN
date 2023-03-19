@@ -607,7 +607,7 @@ if __name__ == '__main__':
 
 
     # parser.add_argument('--pretrain', type=str, default=None)
-    parser.add_argument('--pretrain', type=str, default='ckpts/170000.pth')
+    parser.add_argument('--pretrain', type=str, default='ckpts/180000.pth')
     # parser.add_argument('--pretrain', type=str, default=None)
 
 
@@ -662,7 +662,7 @@ if __name__ == '__main__':
 
     # Стартовая итерация
     # Видимо, для пауз процесса обучения
-    args.start_iter = 170001
+    args.start_iter = 180001
 
 
 
@@ -691,9 +691,10 @@ if __name__ == '__main__':
     g_ema = FullGenerator(
         args.size, args.latent, args.n_mlp, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
     ).to(device)
-    # g_ema.eval()
-    # accumulate(g_ema, generator, 0)
-    #
+
+    g_ema.eval()
+    accumulate(g_ema, generator, 0)
+
     g_reg_ratio = args.g_reg_every / (args.g_reg_every + 1)
     d_reg_ratio = args.d_reg_every / (args.d_reg_every + 1)
 
