@@ -67,31 +67,31 @@ def brush_stroke_mask(img, color=(255,255,255)):
     mask = generate_mask(height, width, img)
     return mask
 
-def make_video(input_dir, output_dir, fps):
-    dirs = sorted(os.listdir(input_dir))
+def make_mp4_video(input_dir, output_dir, fps, video_name):
+    # dirs = sorted(os.listdir(input_dir))
+    #
+    # for frame_path in tqdm(dirs):
 
-    for frame_path in tqdm(dirs):
+    # frame_path_tmp = os.path.join(input_dir, frame_path)
+    # print(frame_path_tmp)
+    img_array = []
+    files = sorted(glob.glob(input_dir + '/*.png'))
+    # print(files)
+    size = (0, 0)
+    for filename in files:
+        img = cv2.imread(filename)
+        height, width, layers = img.shape
+        size = (width, height)
+        img_array.append(img)
 
-        frame_path_tmp = os.path.join(input_dir, frame_path)
-        # print(frame_path_tmp)
-        img_array = []
-        files = sorted(glob.glob(frame_path_tmp + '/*.png'))
-        # print(files)
-        size = (0, 0)
-        for filename in files:
-            img = cv2.imread(filename)
-            height, width, layers = img.shape
-            size = (width, height)
-            img_array.append(img)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    out = cv2.VideoWriter(os.path.join(output_dir, video_name) + '.mp4',
+                          cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), fps, size)
 
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        out = cv2.VideoWriter(os.path.join(output_dir, frame_path) + '.mp4',
-                              cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), fps, size)
-
-        for i in range(len(img_array)):
-            out.write(img_array[i])
-        out.release()
+    for i in range(len(img_array)):
+        out.write(img_array[i])
+    out.release()
 
 
 if __name__=='__main__':
@@ -101,7 +101,7 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser()
     # Можно указать свою модель
     # Либо вообще убрать этот аргумент
-    parser.add_argument('--model', type=str, default='080000', help='GPEN model')
+    parser.add_argument('--model', type=str, default='170000', help='GPEN model')
     # parser.add_argument('--model', type=str, default='GPEN-BFR-512', help='GPEN model')
     # parser.add_argument('--task', type=str, default='FaceEnhancement', help='task of GPEN model')
     parser.add_argument('--key', type=str, default=None, help='key of GPEN model')
@@ -127,33 +127,25 @@ if __name__=='__main__':
     parser.add_argument('--indir', type=str, default='examples/video', help='input folder')
     parser.add_argument('--outdir', type=str, default='results/outs-BFR', help='output folder')
     parser.add_argument('--ext', type=str, default='.jpg', help='extension of output')
+    parser.add_argument('--buf_dir', type=str, default='buffer', help='Папка для помежуточных изображений')
+    parser.add_argument('--buf_frames_dir', type=str, default='frames', help='Папка с необработанными кадрами')
+    parser.add_argument('--buf_gpen_frames_dir', type=str, default='gpen', help='Папка с обработанными кадрами')
+    parser.add_argument('--buf_gpen_frames_dir_prod', type=str, default='gpen_prod', help='Папка с обработанными кадрами')
     args = parser.parse_args()
 
     #model = {'name':'GPEN-BFR-512', 'size':512, 'channel_multiplier':2, 'narrow':1}
     #model = {'name':'GPEN-BFR-256', 'size':256, 'channel_multiplier':1, 'narrow':0.5}
 
-    # РАсположение результата работы
+    # Расположение результата работы
     os.makedirs(args.outdir, exist_ok=True)
-
     # У нас только FaceEnhancement
     processer = FaceEnhancement(args, in_size=args.in_size, out_size=args.out_size, model=args.model, use_sr=args.use_sr, device='cuda' if args.use_cuda else 'cpu')
-
-
-
-
-
-
-
-
-
+    # Обрабатываемые видео
     dirs = sorted(os.listdir(args.indir))
     print(dirs)
 
-
-
     for video_path in dirs:
-        print("Обработка", video_path)
-
+        print(">>>>>>>>>>>>>>>> Обработка", video_path)
         # Расшариваем видео в буфере (frames)
         video_path_tmp = os.path.join(args.indir, video_path)
         videoCapture = cv2.VideoCapture()
@@ -162,179 +154,71 @@ if __name__=='__main__':
         frames = videoCapture.get(cv2.CAP_PROP_FRAME_COUNT)
 
         # Буфер изображений
-        print("Считывание кадров")
-        buf_dir = "buffer"
-        buf_frames_dir = "frames"
-        buf_gpen_frames_dir = "gpen"
-        # buf = np.array([])
+        print(">>>>>>>> Считывание кадров <<<<<<<<")
+        # Папка для помежуточных изображений
+        buf_dir = args.buf_dir
+        # Папка с необработанными кадрами
+        buf_frames_dir = args.buf_frames_dir
+        # Папка с обработанными кадрами
+        buf_gpen_frames_dir = args.buf_gpen_frames_dir
 
+        for i in tqdm(range(int(frames))):
+            ret, frame = videoCapture.read()
+            if not os.path.exists(buf_dir):
+                os.mkdir(buf_dir)
+            if not os.path.exists(os.path.join(buf_dir, video_path)):
+                os.mkdir(os.path.join(buf_dir, video_path))
+            if not os.path.exists(os.path.join(buf_dir, video_path, buf_frames_dir)):
+                os.mkdir(os.path.join(buf_dir, video_path, buf_frames_dir))
+            # Сохраняем кадры на диске
+            cv2.imwrite(os.path.join(buf_dir, video_path, buf_frames_dir, str(i).zfill(6)) + ".png", frame)
 
+        # Обрабатываем изображения из буффера
+        print(">>>>>>>> Обработка видео <<<<<<<<")
+        buf_frames_dir_list = sorted(os.listdir(os.path.join(buf_dir, video_path, buf_frames_dir)))
+        for i in tqdm(range(len(buf_frames_dir_list))):
+            file_name = os.path.join(buf_dir, video_path, buf_frames_dir, buf_frames_dir_list[i])
+            img = cv2.imread(file_name, cv2.IMREAD_COLOR) # BGR
 
+            if i == 0:
+                corr_img = np.zeros_like(img) # BGR
+            else:
+                corr_img = cv2.imread(os.path.join(buf_dir, video_path, buf_frames_dir, buf_frames_dir_list[i - 1]), cv2.IMREAD_COLOR) # BGR
 
+            if not isinstance(img, np.ndarray) or not isinstance(corr_img, np.ndarray):
+                print("ids:", i - 1, i, 'error')
+                continue
 
-        # for i in tqdm(range(int(frames))):
-        #     ret, frame = videoCapture.read()
-        #     # Заносим кадры в буффер для дальнейшей обработки
-        #     # if (len(buf) == 0):
-        #     #     buf = np.expand_dims(frame, axis=0)
-        #     # else:
-        #     #     buf = np.concatenate((buf, np.expand_dims(frame, axis=0)), axis=0)
-        #
-        #
-        #
-        #     # print(os.path.join(buf_dir, '.'.join(video_path.split('.')[:-1]), str(i).zfill(6)) + ".png")
-        #
-        #     # _dir =
-        #     if not os.path.exists(os.path.join(buf_dir, video_path)):
-        #         os.mkdir(os.path.join(buf_dir, video_path))
-        #     if not os.path.exists(os.path.join(buf_dir, video_path, buf_frames_dir)):
-        #         os.mkdir(os.path.join(buf_dir, video_path, buf_frames_dir))
-        #     # Сохраняем кадры на диске
-        #     cv2.imwrite(os.path.join(buf_dir, video_path, buf_frames_dir, str(i).zfill(6)) + ".png", frame)
-        #
-        #
-        #
-        #
-        #
-        #
-        # frames_buf_dirs = sorted(os.listdir(os.path.join(buf_dir, video_path, buf_frames_dir)))
-        # print(frames_buf_dirs)
-        # print(video_path)
-        #
-        #
-        #
-        #
-        #
-        # for i in tqdm(range(len(frames_buf_dirs))):
-        #
-        #
-        #     file_name = os.path.join(buf_dir, video_path, buf_frames_dir, frames_buf_dirs[i])
-        #
-        #     # print(file_name)
-        #
-        #     img = cv2.imread(file_name, cv2.IMREAD_COLOR) # BGR
-        #
-        #     # img = buf[i] # BGR
-        #     if i == 0:
-        #         corr_img = np.zeros_like(img) # BGR
-        #     else:
-        #         corr_img = cv2.imread(os.path.join(buf_dir, video_path, buf_frames_dir, frames_buf_dirs[i - 1]), cv2.IMREAD_COLOR) # BGR
-        #
-        #     if not isinstance(img, np.ndarray) or not isinstance(corr_img, np.ndarray): print("ids:", i - 1, i, 'error'); continue
-        #
-        #
-        #
-        #
-        #
-        #     img_out, orig_faces, enhanced_faces = processer.process(img=img, corr_img=corr_img, isFirst=i == 0, aligned=args.aligned)
-        #
-        #
-        #
-        #
-        #
-        #     img = cv2.resize(img, img_out.shape[:2][::-1])
-        #     # corr_img = cv2.resize(corr_img, corr_img_out.shape[:2][::-1])
-        #
-        #
-        #
-        #
-        #
-        #
-        #     # print(video_path)
-        #     # print(video_path.split('.')[:-1])
-        #
-        #     buf_dir = "buffer"
-        #     buf_gpen_frames_dir = "gpen"
-        #     if not os.path.exists(os.path.join(buf_dir, video_path)):
-        #         os.mkdir(os.path.join(buf_dir, video_path))
-        #     if not os.path.exists(os.path.join(buf_dir, video_path, buf_gpen_frames_dir)):
-        #         os.mkdir(os.path.join(buf_dir, video_path, buf_gpen_frames_dir))
-        #
-        #
-        #
-        #
-        #
-        #     cv2.imwrite(os.path.join(buf_dir, video_path, buf_gpen_frames_dir, str(i).zfill(6) + ".png"), np.hstack((img, img_out)))
-        #     # cv2.imwrite(os.path.join(args.outdir, '.'.join(video_path.split('.')[:-1]) + str(i).zfill(6) + f'_GPEN{args.ext}'), img_out)
-        #
-        #
-        #
-        #     if args.save_face:
-        #         for m, (ef, of) in enumerate(zip(enhanced_faces, orig_faces)):
-        #             of = cv2.resize(of, ef.shape[:2])
-        #             cv2.imwrite(os.path.join(args.outdir, '.'.join((video_path + str(i)).split('.')[:-1])+'_face%02d'%m+args.ext), np.hstack((of, ef)))
-        #
-        #
-        #
-        #     # if n%10==0: print(n, filename)
+            img_out, orig_faces, enhanced_faces = processer.process(img=img, corr_img=corr_img, isFirst=i == 0, aligned=args.aligned)
+            # Для сравнения
+            img = cv2.resize(img, img_out.shape[:2][::-1])
 
+            # Папка для помежуточных изображений
+            buf_dir = args.buf_dir
+            # Папка с обработанными кадрами
+            buf_gpen_frames_dir = args.buf_gpen_frames_dir
+            if not os.path.exists(os.path.join(buf_dir, video_path, buf_gpen_frames_dir)):
+                os.mkdir(os.path.join(buf_dir, video_path, buf_gpen_frames_dir))
 
+            # Записываем оригинальный и обработанный кадр в одном видео
+            cv2.imwrite(os.path.join(buf_dir, video_path, buf_gpen_frames_dir, str(i).zfill(6) + ".png"), np.hstack((img, img_out)))
 
+            # Папка с обработанными кадрами
+            buf_gpen_frames_dir_prod = args.buf_gpen_frames_dir_prod
+            if not os.path.exists(os.path.join(buf_dir, video_path, buf_gpen_frames_dir_prod)):
+                os.mkdir(os.path.join(buf_dir, video_path, buf_gpen_frames_dir_prod))
+            # Записываем только обработанный кадр
+            cv2.imwrite(os.path.join(buf_dir, video_path, buf_gpen_frames_dir_prod, str(i).zfill(6) + ".png"), img_out)
 
+            # Для сохранения обработанных лиц
+            if args.save_face:
+                for m, (ef, of) in enumerate(zip(enhanced_faces, orig_faces)):
+                    of = cv2.resize(of, ef.shape[:2])
+                    cv2.imwrite(os.path.join(args.outdir, '.'.join((video_path + str(i)).split('.')[:-1])+'_face%02d'%m+args.ext), np.hstack((of, ef)))
 
-
-
-
-
-
-
+        print(">>>>>>>> Сбор видео <<<<<<<<")
+        # Нужно собрать 2 видео
         # Сбор видео
         frames_buf_dirs = sorted(os.listdir(os.path.join(buf_dir, video_path, buf_gpen_frames_dir)))
-        print(frames_buf_dirs)
-        print(os.path.join(buf_dir, video_path))
-
-
-
-        make_video(input_dir=os.path.join(buf_dir, video_path), output_dir=args.outdir, fps=fps)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # for n, file in enumerate(files[:]):
-    #     filename = os.path.basename(file)
-    #
-    #     img = cv2.imread(file, cv2.IMREAD_COLOR) # BGR
-    #     if not isinstance(img, np.ndarray): print(filename, 'error'); continue
-    #     #img = cv2.resize(img, (0,0), fx=2, fy=2) # optional
-    #
-    #     # if args.task == 'FaceInpainting':
-    #     #     img = np.asarray(brush_stroke_mask(Image.fromarray(img)))
-    #
-    #     img_out, orig_faces, enhanced_faces = processer.process(img, aligned=args.aligned)
-    #
-    #     img = cv2.resize(img, img_out.shape[:2][::-1])
-    #     cv2.imwrite(os.path.join(args.outdir, '.'.join(filename.split('.')[:-1])+f'_COMP{args.ext}'), np.hstack((img, img_out)))
-    #     cv2.imwrite(os.path.join(args.outdir, '.'.join(filename.split('.')[:-1])+f'_GPEN{args.ext}'), img_out)
-    #
-    #     if args.save_face:
-    #         for m, (ef, of) in enumerate(zip(enhanced_faces, orig_faces)):
-    #             of = cv2.resize(of, ef.shape[:2])
-    #             cv2.imwrite(os.path.join(args.outdir, '.'.join(filename.split('.')[:-1])+'_face%02d'%m+args.ext), np.hstack((of, ef)))
-    #
-    #     if n%10==0: print(n, filename)
+        make_mp4_video(input_dir=os.path.join(buf_dir, video_path, buf_gpen_frames_dir), output_dir=args.outdir, fps=fps, video_name=os.path.splitext(video_path)[0] + '+Сompare')
+        make_mp4_video(input_dir=os.path.join(buf_dir, video_path, buf_gpen_frames_dir_prod), output_dir=args.outdir, fps=fps, video_name=os.path.splitext(video_path)[0])
