@@ -950,42 +950,166 @@ class FullGenerator_SR(nn.Module):
             2048: int(8 * channel_multiplier * narrow),
         }
 
+        # Было
+        # # log_size -> 6
+        # self.log_size = int(math.log(size, 2))
+        # Учитываем размеры вхорда и выхода, раньше на все был один размер
         self.log_insize = int(math.log(in_size, 2))
         self.log_outsize = int(math.log(out_size, 2))
+
+        # Было
+        # self.generator = Generator(size, style_dim, n_mlp, channel_multiplier=channel_multiplier, blur_kernel=blur_kernel, lr_mlp=lr_mlp, isconcat=isconcat, narrow=narrow, device=device)
+        # Генератор генерирует изображение размера отличного от входного
         self.generator = Generator(out_size, style_dim, n_mlp, channel_multiplier=channel_multiplier, blur_kernel=blur_kernel, lr_mlp=lr_mlp, isconcat=isconcat, narrow=narrow, device=device)
 
+        # Наши слои будем добавять здесь
+        # ПОПРОБУЕМ ДОБАВИТЬ ЗДЕСЬ
+
+        # [2, 1024] (32, 32)
+        # [2, 4096] (64, 64)
+        # Зависит от модели CLIP
+        self.features_map_size = 32
+        # print(self.features_map_size * self.features_map_size, self.features_map_size * self.features_map_size * 4)
+        self.features_map_linear = nn.Linear(self.features_map_size * self.features_map_size,
+                                             self.features_map_size * self.features_map_size * 4)
+        # Нужен один слой конволюции
+        # От [2, 1, 64, 64] перейти к
+        # [2, 1, 256, 256]
+        size_conv = in_size // self.features_map_size // 2
+        self.CONV_FEATURES = nn.Conv2d(in_channels=1, out_channels=size_conv * size_conv, kernel_size=3, stride=1, padding=1)
+        # Нужен один слой конволюции
+        # От [2, 6, 64, 64] перейти к
+        # [2, 3, 64, 64]
+        self.CONV_FEATURES_AND_IMAGE = nn.Conv2d(in_channels=4, out_channels=3, kernel_size=3, stride=1, padding=1)
+        ################################
+
+
+
+        # Первая свертка задается отдельно
+        # in_size отвечает за входные данные -> новые входные слои тоже должны зависить от in_size
+        # conv = [ConvLayer(3, channels[size], 1, device=device)]
         conv = [ConvLayer(3, channels[in_size], 1, device=device)]
+
+        # self.ecd0 = nn.Sequential(*conv)
         self.ecd0 = nn.Sequential(*conv)
+
+        # in_channel = channels[size]
         in_channel = channels[in_size]
 
+        # self.names = ['ecd%d' % i for i in range(self.log_size - 1)]
         self.names = ['ecd%d'%i for i in range(self.log_insize-1)]
+
+        # for i in range(self.log_size, 2, -1):
         for i in range(self.log_insize, 2, -1):
+
+            # out_channel = channels[2 ** (i - 1)]
             out_channel = channels[2 ** (i - 1)]
-            #conv = [ResBlock(in_channel, out_channel, blur_kernel)]
+
+            # conv = [ConvLayer(in_channel, out_channel, 3, downsample=True, device=device)]
             conv = [ConvLayer(in_channel, out_channel, 3, downsample=True, device=device)]
-            setattr(self, self.names[self.log_insize-i+1], nn.Sequential(*conv))
+
+            # setattr(self, self.names[self.log_size - i + 1], nn.Sequential(*conv))
+            setattr(self, self.names[self.log_insize - i + 1], nn.Sequential(*conv))
+
+            # in_channel = out_channel
             in_channel = out_channel
+
+        # self.final_linear = nn.Sequential(EqualLinear(channels[4] * 4 * 4, style_dim, activation='fused_lrelu', device=device))
         self.final_linear = nn.Sequential(EqualLinear(channels[4] * 4 * 4, style_dim, activation='fused_lrelu', device=device))
 
+
+
+
+
+
+
+
+
+
+
+
+
+    # def forward(self,
+    #         inputs,
+
+    #         correlation_inputs,
+
+    #         return_latents=False,
+    #         inject_index=None,
+    #         truncation=1,
+    #         truncation_latent=None,
+    #         input_is_latent=False,
+    #     ):
     def forward(self,
         inputs,
+
+        # Корреляционный вектор
+        correlation_inputs,
+
+
         return_latents=False,
         inject_index=None,
         truncation=1,
         truncation_latent=None,
         input_is_latent=False,
     ):
+        # Наша предобработка
+        # На вход должны приходить previous_inputs current_inputs
+        # print("DO correlation_inputs ->", correlation_inputs.shape, flush=True)
+        # print(self.features_map_linear.weight.dtype, flush=True)
+        # print(correlation_inputs.dtype, flush=True)
+        correlation_inputs = self.features_map_linear(correlation_inputs)
+        # print("POSLE LINEAR correlation_inputs ->", correlation_inputs.shape, flush=True)
+        correlation_inputs = torch.reshape(correlation_inputs, (
+        correlation_inputs.shape[0], 1, self.features_map_size * 2, self.features_map_size * 2))
+        # print("POSLE RESHAPE correlation_inputs ->", correlation_inputs.shape, flush=True)
+        correlation_inputs = self.CONV_FEATURES(correlation_inputs)
+        # print("POSLE CONV correlation_inputs ->", correlation_inputs.shape, flush=True)
+        correlation_inputs = torch.reshape(correlation_inputs, (
+        correlation_inputs.shape[0], 1, int(self.features_map_size * 2 * math.sqrt(correlation_inputs.shape[1])),
+        int(self.features_map_size * 2 * math.sqrt(correlation_inputs.shape[1]))))
+        # print("POSLE RESHAPE correlation_inputs ->", correlation_inputs.shape, flush=True)
+        # print("DO CAT inputs ->", inputs.shape, flush=True)
+
+        ####################
+
+        # Внедряем корреляционный вход
+        inputs = torch.cat((correlation_inputs, inputs), dim=1)
+        # print("POSLE CAT inputs ->", inputs.shape, flush=True)
+        inputs = self.CONV_FEATURES_AND_IMAGE(inputs)
+        # print("POSLE CONV inputs ->", inputs.shape, flush=True)
+        ##############################
+
+        # noise = []
         noise = []
+
+
         for i in range(self.log_outsize-self.log_insize):
             noise.append(None)
+        # for i in range(self.log_size-1):
         for i in range(self.log_insize-1):
+            # ecd = getattr(self, self.names[i])
             ecd = getattr(self, self.names[i])
+
+            # inputs = ecd(inputs)
             inputs = ecd(inputs)
+
+            # noise.append(inputs)
             noise.append(inputs)
             #print(inputs.shape)
+
+        # inputs = inputs.view(inputs.shape[0], -1)
         inputs = inputs.view(inputs.shape[0], -1)
+
+        # outs = self.final_linear(inputs)
         outs = self.final_linear(inputs)
         #print(outs.shape)
+
+        # noise = list(itertools.chain.from_iterable(itertools.repeat(x, 2) for x in noise))[::-1]
         noise = list(itertools.chain.from_iterable(itertools.repeat(x, 2) for x in noise))[::-1]
+
+        # outs = self.generator([outs], return_latents, inject_index, truncation, truncation_latent, input_is_latent, noise=noise[1:])
         image, latent = self.generator([outs], return_latents, inject_index, truncation, truncation_latent, input_is_latent, noise=noise[1:])
+
+        # return outs
         return image, latent

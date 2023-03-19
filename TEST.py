@@ -48,3 +48,11 @@
 # for i in range(10):
 #     print(np.random.uniform(), np.random.uniform())
 #########################################################################################################################
+import torch.nn.functional as F
+import torch
+source = torch.rand((2,2, 2))
+# now we expand to size (7, 11) by appending a row of 0s at pos 0 and pos 6,
+# and a column of 0s at pos 10
+result = F.pad(input=source, pad=(2, 2, 2, 2), mode='constant', value=0)
+print(result.shape)
+print(result)

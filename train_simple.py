@@ -22,7 +22,7 @@ from torchvision import transforms, utils
 
 import __init_paths
 from training.data_loader.dataset_face import FaceDataset
-from face_model.gpen_model import FullGenerator, Discriminator
+from face_model.gpen_model import FullGenerator, Discriminator, FullGenerator_SR
 
 from training.loss.id_loss import IDLoss
 from distributed import (
@@ -484,7 +484,16 @@ def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_em
                     # Добавляем корреляционный вход
                     sample, _ = g_ema(degraded_img, correlation_features)
                     # print("SAMPLE 1", sample.shape)
-                    sample = torch.cat((correlation_img, degraded_img, sample, real_img), 0)
+
+                    pad_size = (args.out_size - args.in_size) // 2
+
+                    sample = torch.cat(
+                        (
+                            F.pad(input=correlation_img, pad=(pad_size, pad_size, pad_size, pad_size), mode='constant', value=0),
+                            F.pad(input=degraded_img, pad=(pad_size, pad_size, pad_size, pad_size), mode='constant', value=0),
+                            sample,
+                            real_img
+                        ), 0)
                     # print("SAMPLE 2", sample.shape)
                     utils.save_image(
                         sample,
@@ -545,7 +554,7 @@ if __name__ == '__main__':
 
 
     # batch 2
-    # parser.add_argument('--batch', type=int, default=2)
+    # parser.add_argument('--batch', type=int, default=1)
     parser.add_argument('--batch', type=int, default=4)
 
 
@@ -556,9 +565,12 @@ if __name__ == '__main__':
     # size 1024
     # Из-за id_loss минимальный размер по задумке 256
     # Из-за нехватки памяти вынужден переделать id_loss и поставить 64
-    parser.add_argument('--size', type=int, default=256)
+    # parser.add_argument('--size', type=int, default=256)
     # parser.add_argument('--size', type=int, default=64)
 
+    # SR из 256 к 512
+    parser.add_argument('--in_size', type=int, default=256)
+    parser.add_argument('--out_size', type=int, default=512)
 
 
 
@@ -607,8 +619,8 @@ if __name__ == '__main__':
 
 
     # parser.add_argument('--pretrain', type=str, default=None)
-    parser.add_argument('--pretrain', type=str, default='ckpts/170000.pth')
-    # parser.add_argument('--pretrain', type=str, default=None)
+    # parser.add_argument('--pretrain', type=str, default='ckpts/170000.pth')
+    parser.add_argument('--pretrain', type=str, default=None)
 
 
 
@@ -662,7 +674,7 @@ if __name__ == '__main__':
 
     # Стартовая итерация
     # Видимо, для пауз процесса обучения
-    args.start_iter = 170001
+    args.start_iter = 0
 
 
 
@@ -679,21 +691,105 @@ if __name__ == '__main__':
     # ('--channel_multiplier', type=int, default=2)
     # ('--narrow', type=float, default=1.0)
     # print(torch.cuda.memory_summary(device=device, abbreviated=False))
-    generator = FullGenerator(
-        args.size, args.latent, args.n_mlp, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
+
+
+
+
+
+
+
+
+    # В место FullGenerator обучаем FullGenerator_SR
+
+    # def __init__(
+    #         self,
+    #         size,
+    #         style_dim,
+    #         n_mlp,
+    #         channel_multiplier=2,
+    #         blur_kernel=[1, 3, 3, 1],
+    #         lr_mlp=0.01,
+    #         isconcat=True,
+    #         narrow=1,
+    #         device='cpu'
+    #     ):
+
+    # generator = FullGenerator(
+    #     size=args.size, style_dim=args.latent, n_mlp=args.n_mlp, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
+    # ).to(device)
+
+    # def __init__(
+    #         self,
+    #         in_size,
+    #         out_size,
+    #         style_dim,
+    #         n_mlp,
+    #         channel_multiplier=2,
+    #         blur_kernel=[1, 3, 3, 1],
+    #         lr_mlp=0.01,
+    #         isconcat=True,
+    #         narrow=1,
+    #         device='cpu'
+    #     ):
+    print("initial FullGenerator_SR")
+    generator = FullGenerator_SR(
+        in_size=args.in_size, out_size=args.out_size, style_dim=args.latent, n_mlp=args.n_mlp, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
     ).to(device)
-    # # Разобрать !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    # # Дискриминатор
-    # print(torch.cuda.memory_summary(device=device, abbreviated=False))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # Разобрать !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # Дискриминатор
+    # discriminator = Discriminator(
+    #     args.size, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
+    # ).to(device)
+    # Дискриминатор получает изображение сгенерированное генератором
     discriminator = Discriminator(
-        args.size, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
+        args.out_size, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
     ).to(device)
-    g_ema = FullGenerator(
-        args.size, args.latent, args.n_mlp, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
+
+
+
+    # g_ema = FullGenerator(
+    #     args.size, args.latent, args.n_mlp, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
+    # ).to(device)
+
+    g_ema = FullGenerator_SR(
+        in_size=args.in_size, out_size=args.out_size, style_dim=args.latent, n_mlp=args.n_mlp, channel_multiplier=args.channel_multiplier, narrow=args.narrow, device=device
     ).to(device)
-    # g_ema.eval()
-    # accumulate(g_ema, generator, 0)
-    #
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # Зачем-то комментировал
+    # Возможно ошибся, стоит попробовать воспользоваться
+    g_ema.eval()
+    accumulate(g_ema, generator, 0)
+    ####################################################
+
     g_reg_ratio = args.g_reg_every / (args.g_reg_every + 1)
     d_reg_ratio = args.d_reg_every / (args.d_reg_every + 1)
 
@@ -727,30 +823,8 @@ if __name__ == '__main__':
     id_loss = IDLoss(args.base_dir, device, ckpt_dict=None)
 
     lpips_func = lpips.LPIPS(net='alex',version='0.1').to(device)
-    #
-    # if args.distributed:
-    #     generator = nn.parallel.DistributedDataParallel(
-    #         generator,
-    #         device_ids=[args.local_rank],
-    #         output_device=args.local_rank,
-    #         broadcast_buffers=False,
-    #     )
-    #
-    #     discriminator = nn.parallel.DistributedDataParallel(
-    #         discriminator,
-    #         device_ids=[args.local_rank],
-    #         output_device=args.local_rank,
-    #         broadcast_buffers=False,
-    #     )
-    #
-    #     id_loss = nn.parallel.DistributedDataParallel(
-    #         id_loss,
-    #         device_ids=[args.local_rank],
-    #         output_device=args.local_rank,
-    #         broadcast_buffers=False,
-    #     )
-    #
-    dataset = FaceDataset(args.path, args.size)
+
+    dataset = FaceDataset(args.path, args.out_size)
     loader = data.DataLoader(
         dataset,
         batch_size=args.batch,
@@ -761,4 +835,3 @@ if __name__ == '__main__':
     clip_model, clip_preprocess = clip.load('RN50', device)
 
     train(args, loader, generator, discriminator, [smooth_l1_loss, id_loss], g_optim, d_optim, g_ema, lpips_func, clip_model, clip_preprocess, device)
-    # def train(args, loader, generator, discriminator, losses, g_optim, d_optim, g_ema, lpips_func, device):

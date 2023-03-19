@@ -90,19 +90,15 @@ class GFPGAN_degradation(object):
 
 class FaceDataset(Dataset):
     def __init__(self, path, resolution=512):
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        path = r'/home/levchenkone/GITHUB/GPEN/examples/test_dataset/*/*'
+        # path = r'/home/jasmine/DIPLOM/GPEN/examples/test_dataset/*/*'
         print("--------------------------------------------INIT FaceDataset-------------------------------------------", flush=True)
         self.resolution = resolution
         print("resolution =", resolution, flush=True)
 
-
-
-        self.HQ_imgs = glob.glob(os.path.join(path, '*', '*'))#glob.glob(os.path.join(path, '*.*'))
-
-        # self.test_ = glob.glob(os.path.join(test_path, '*', '*coef*'))
-
-
-
-        # print("HQ_imgs =", self.HQ_imgs, flush=True)
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        self.HQ_imgs = glob.glob(path)#glob.glob(os.path.join(path, '*', '*'))
         self.length = len(self.HQ_imgs)
         print("length =", len(self.HQ_imgs), flush=True)
 
@@ -114,68 +110,29 @@ class FaceDataset(Dataset):
     def __getitem__(self, index):
 
         # print("--------------------------------------------FaceDataset __getitem__--------------------------------------------")
-        # print("index =", index)
 
+        # img_lq -> (256, 256) | (512, 512) -> (256, 256)
+        # img_gt -> (256, 256) | (512, 512) -> (512, 512)
+        # img_corr -> (256, 256) | (512, 512) -> (256, 256)
 
         images_path = glob.glob(os.path.join(self.HQ_imgs[index], '*.*'))
-        # print("images_path", images_path)
-        # print("image 1 path =", images_path[0])
-        # print("image 2 path =", images_path[1])
-
-
-
-
-        # img_gt = cv2.imread(self.HQ_imgs[index], cv2.IMREAD_COLOR)
-
-        # print("img_corr path =", images_path[0], flush=True)
-        # print("img_gt path =", images_path[1], flush=True)
 
         # Изображение для корреляции
+        # 512
         img_corr = cv2.imread(images_path[0], cv2.IMREAD_COLOR)
         # Восстанавливаемое изображение
+        # 512
         img_gt = cv2.imread(images_path[1], cv2.IMREAD_COLOR)
 
-
-
-
-
-
-        # print(self.HQ_imgs[index])
-
-
-
-        # print("1 img_gt", img_gt.shape)
-
         # Изменяет разрешение
-
-
-
-        # DO resize -> (512, 512, 3)
-        # POSLE resize -> (64, 64, 3)
-        # print("DO resize ->", img_corr.shape)
-
-
-
-
-
-
-
         # Также изменяем размер коррелируемого изображения
+        # 512
         img_corr = cv2.resize(img_corr, (self.resolution, self.resolution), interpolation=cv2.INTER_AREA)
+        # 512
         img_gt = cv2.resize(img_gt, (self.resolution, self.resolution), interpolation=cv2.INTER_AREA)
-        # print("POSLE resize ->", img_corr.shape)
-
-
-
-
-
-        # print("2 img_gt", img_gt.shape)
 
 
         # BFR degradation
-        # We adopt the degradation of GFPGAN for simplicity, which however differs from our implementation in the paper.
-        # Data degradation plays a key role in BFR. Please replace it with your own methods.
-
         # Мы принимаем деградацию GFPGAN для простоты, которая, однако, отличается от нашей реализации в статье.
         # Деградация данных играет ключевую роль в BFR. Пожалуйста, замените его своими методами.
 
@@ -187,6 +144,12 @@ class FaceDataset(Dataset):
 
         # gt-избражение изменяется вместе с corr-изображением одинаковым образом
         img_gt, img_lq, img_corr = self.degrader.degrade_process(img_gt=img_gt, img_corr=img_corr)
+
+        # Производим манипуляции с размерами для SR
+        # 256
+        img_corr = cv2.resize(img_corr, (int(self.resolution // 2), int(self.resolution // 2)), interpolation=cv2.INTER_AREA)
+        # 256
+        img_lq = cv2.resize(img_lq, (int(self.resolution // 2), int(self.resolution // 2)), interpolation=cv2.INTER_AREA)
 
         # Повторяем манипуляции
         img_corr = (torch.from_numpy(img_corr) - 0.5) / 0.5
