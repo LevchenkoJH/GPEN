@@ -619,8 +619,8 @@ if __name__ == '__main__':
 
 
     # parser.add_argument('--pretrain', type=str, default=None)
-    # parser.add_argument('--pretrain', type=str, default='ckpts/170000.pth')
-    parser.add_argument('--pretrain', type=str, default=None)
+    parser.add_argument('--pretrain', type=str, default='ckpts/040000.pth')
+    # parser.add_argument('--pretrain', type=str, default=None)
 
 
 
@@ -674,7 +674,7 @@ if __name__ == '__main__':
 
     # Стартовая итерация
     # Видимо, для пауз процесса обучения
-    args.start_iter = 0
+    args.start_iter = 40001
 
 
 
