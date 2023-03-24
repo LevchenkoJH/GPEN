@@ -101,7 +101,7 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser()
     # Можно указать свою модель
     # Либо вообще убрать этот аргумент
-    parser.add_argument('--model', type=str, default='100000', help='GPEN model')
+    parser.add_argument('--model', type=str, default='300000', help='GPEN model')
     # parser.add_argument('--model', type=str, default='GPEN-BFR-512', help='GPEN model')
     # parser.add_argument('--task', type=str, default='FaceEnhancement', help='task of GPEN model')
     parser.add_argument('--key', type=str, default=None, help='key of GPEN model')
