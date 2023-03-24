@@ -537,7 +537,7 @@ if __name__ == '__main__':
     parser.add_argument('--path', type=str, default='examples/test_dataset')
     parser.add_argument('--base_dir', type=str, default='./')
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    parser.add_argument('--iter', type=int, default=300000)
+    parser.add_argument('--iter', type=int, default=600000)
     # parser.add_argument('--iter', type=int, default=4000000)
 
 
@@ -607,7 +607,7 @@ if __name__ == '__main__':
 
 
     # parser.add_argument('--pretrain', type=str, default=None)
-    parser.add_argument('--pretrain', type=str, default='ckpts/250000.pth')
+    parser.add_argument('--pretrain', type=str, default='ckpts/300000.pth')
     # parser.add_argument('--pretrain', type=str, default=None)
 
 
@@ -662,7 +662,7 @@ if __name__ == '__main__':
 
     # Стартовая итерация
     # Видимо, для пауз процесса обучения
-    args.start_iter = 250001
+    args.start_iter = 300001
 
 
 
