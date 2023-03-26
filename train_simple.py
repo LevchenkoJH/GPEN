@@ -556,7 +556,7 @@ if __name__ == '__main__':
     # size 1024
     # Из-за id_loss минимальный размер по задумке 256
     # Из-за нехватки памяти вынужден переделать id_loss и поставить 64
-    parser.add_argument('--size', type=int, default=256)
+    parser.add_argument('--size', type=int, default=512)
     # parser.add_argument('--size', type=int, default=64)
 
 
@@ -606,8 +606,8 @@ if __name__ == '__main__':
 
 
 
-    # parser.add_argument('--pretrain', type=str, default=None)
-    parser.add_argument('--pretrain', type=str, default='ckpts/300000.pth')
+    parser.add_argument('--pretrain', type=str, default=None)
+    # parser.add_argument('--pretrain', type=str, default='ckpts/300000.pth')
     # parser.add_argument('--pretrain', type=str, default=None)
 
 
@@ -649,7 +649,7 @@ if __name__ == '__main__':
         synchronize()
 
     # Не ясно для чего
-    args.latent = 512
+    args.latent = 1024
     # number of multi-layer perception layers
     # количество слоев многослойного восприятия
     args.n_mlp = 8
@@ -662,7 +662,7 @@ if __name__ == '__main__':
 
     # Стартовая итерация
     # Видимо, для пауз процесса обучения
-    args.start_iter = 300001
+    args.start_iter = 0
 
 
 
