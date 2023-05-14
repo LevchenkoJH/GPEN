@@ -90,6 +90,7 @@ class GFPGAN_degradation(object):
 
 class FaceDataset(Dataset):
     def __init__(self, path, resolution=512):
+        path = r'/home/levchenkone/GITHUB/GPEN/examples/test_dataset/*/*'
         print("--------------------------------------------INIT FaceDataset-------------------------------------------", flush=True)
         self.resolution = resolution
         print("resolution =", resolution, flush=True)
