@@ -704,16 +704,58 @@ class FullGenerator(nn.Module):
         # Зависит от модели CLIP
         self.features_map_size = 32
         # print(self.features_map_size * self.features_map_size, self.features_map_size * self.features_map_size * 4)
-        self.features_map_linear = nn.Linear(self.features_map_size * self.features_map_size, self.features_map_size * self.features_map_size * 4)
+        ## torch.nn.Linear(in_features, out_features, bias=True, device=None, dtype=None)
+
+        ## class EqualLinear(nn.Module):
+        ##     def __init__(
+        ##             self, in_dim, out_dim, bias=True, bias_init=0, lr_mul=1, activation=None, device='cpu'
+        ##     ):
+
+        # self.features_map_linear = nn.Linear(self.features_map_size * self.features_map_size, self.features_map_size * self.features_map_size * 4)
+        self.features_map_linear = nn.Sequential(EqualLinear(in_dim=self.features_map_size * self.features_map_size, out_dim=self.features_map_size * self.features_map_size * 4, activation='fused_lrelu', device=device))
+
         # Нужен один слой конволюции
         # От [2, 1, 64, 64] перейти к
         # [2, 1, 256, 256]
         size_conv = size // self.features_map_size // 2
-        self.CONV_FEATURES = nn.Conv2d(in_channels=1, out_channels=size_conv*size_conv, kernel_size=3, stride=1, padding=1)
+
+        # class ConvLayer(nn.Sequential):
+
+        # def __init__(
+        #         self,
+        #         in_channel,
+        #         out_channel,
+        #         kernel_size,
+        #         downsample=False,
+        #         blur_kernel=[1, 3, 3, 1],
+        #         bias=True,
+        #         activate=True,
+        #         device='cpu'
+        #     ):
+
+        # class EqualConv2d(nn.Module):
+        #     def __init__(
+        #             self, in_channel, out_channel, kernel_size, stride=1, padding=0, bias=True
+        #     ):
+
+
+        # self.CONV_FEATURES = nn.Conv2d(in_channels=1, out_channels=size_conv*size_conv, kernel_size=3, stride=1, padding=1)
+        self.CONV_FEATURES = EqualConv2d(in_channel=1, out_channel=size_conv * size_conv, kernel_size=3, stride=1, padding=1)
+
+
+
+
+
         # Нужен один слой конволюции
         # От [2, 6, 64, 64] перейти к
         # [2, 3, 64, 64]
-        self.CONV_FEATURES_AND_IMAGE = nn.Conv2d(in_channels=4, out_channels=3, kernel_size=3, stride=1, padding=1)
+        # self.CONV_FEATURES_AND_IMAGE = nn.Conv2d(in_channels=4, out_channels=3, kernel_size=3, stride=1, padding=1)
+        self.CONV_FEATURES_AND_IMAGE = EqualConv2d(in_channel=4, out_channel=3, kernel_size=3, stride=1, padding=1)
+
+
+
+
+
 
         # Первая свертка задается отдельно
         # in_channel = 3, скорее всего из-за RGB
