@@ -548,7 +548,7 @@ if __name__ == '__main__':
     # parser.add_argument('--batch', type=int, default=2)
     # parser.add_argument('--batch', type=int, default=4)
 
-    parser.add_argument('--batch', type=int, default=20)
+    parser.add_argument('--batch', type=int, default=16)
 
 
 
