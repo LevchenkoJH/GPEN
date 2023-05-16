@@ -548,7 +548,7 @@ if __name__ == '__main__':
     # parser.add_argument('--batch', type=int, default=2)
     # parser.add_argument('--batch', type=int, default=4)
 
-    parser.add_argument('--batch', type=int, default=8)
+    parser.add_argument('--batch', type=int, default=24)
 
 
 
@@ -558,8 +558,8 @@ if __name__ == '__main__':
     # size 1024
     # Из-за id_loss минимальный размер по задумке 256
     # Из-за нехватки памяти вынужден переделать id_loss и поставить 64
-    parser.add_argument('--size', type=int, default=512)
-    # parser.add_argument('--size', type=int, default=256)
+    # parser.add_argument('--size', type=int, default=512)
+    parser.add_argument('--size', type=int, default=256)
     # parser.add_argument('--size', type=int, default=64)
 
 
@@ -592,7 +592,7 @@ if __name__ == '__main__':
     # Параметр для оптимизатора / На какой итерации производится регуляризации генератора
     parser.add_argument('--g_reg_every', type=int, default=4)
     # Логирование в виде изображений и сохранение весов раз в 10000 итераций
-    parser.add_argument('--save_freq', type=int, default=5000)
+    parser.add_argument('--save_freq', type=int, default=10000)
     # parser.add_argument('--save_freq', type=int, default=25000)
     # Параметр для оптимизатора
     parser.add_argument('--lr', type=float, default=0.002)
