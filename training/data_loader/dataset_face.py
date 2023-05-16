@@ -95,13 +95,10 @@ class FaceDataset(Dataset):
         self.resolution = resolution
         print("resolution =", resolution, flush=True)
 
-
-
-        self.HQ_imgs = glob.glob(os.path.join(path, '*', '*'))#glob.glob(os.path.join(path, '*.*'))
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        self.HQ_imgs = glob.glob(path)  # glob.glob(os.path.join(path, '*', '*'))
 
         # self.test_ = glob.glob(os.path.join(test_path, '*', '*coef*'))
-
-
 
         # print("HQ_imgs =", self.HQ_imgs, flush=True)
         self.length = len(self.HQ_imgs)
