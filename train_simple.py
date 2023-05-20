@@ -592,7 +592,7 @@ if __name__ == '__main__':
     # Параметр для оптимизатора / На какой итерации производится регуляризации генератора
     parser.add_argument('--g_reg_every', type=int, default=4)
     # Логирование в виде изображений и сохранение весов раз в 10000 итераций
-    parser.add_argument('--save_freq', type=int, default=10000)
+    parser.add_argument('--save_freq', type=int, default=7000)
     # parser.add_argument('--save_freq', type=int, default=25000)
     # Параметр для оптимизатора
     parser.add_argument('--lr', type=float, default=0.002)
@@ -610,8 +610,8 @@ if __name__ == '__main__':
 
 
     # parser.add_argument('--pretrain', type=str, default=None)
-    # parser.add_argument('--pretrain', type=str, default='ckpts/370000.pth')
-    parser.add_argument('--pretrain', type=str, default=None)
+    parser.add_argument('--pretrain', type=str, default='ckpts/020000.pth')
+    # parser.add_argument('--pretrain', type=str, default=None)
 
 
 
@@ -667,7 +667,7 @@ if __name__ == '__main__':
     # Стартовая итерация
     # Видимо, для пауз процесса обучения
     # args.start_iter = 370001
-    args.start_iter = 0
+    args.start_iter = 20001
 
 
 
