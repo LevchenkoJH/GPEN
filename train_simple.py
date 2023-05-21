@@ -599,7 +599,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--local_rank', type=int, default=0)
     # ckpt weights
-    parser.add_argument('--ckpt', type=str, default='ckpts')
+    parser.add_argument('--ckpt', type=str, default='ckpts-2')
 
 
 
@@ -610,8 +610,8 @@ if __name__ == '__main__':
 
 
     # parser.add_argument('--pretrain', type=str, default=None)
-    parser.add_argument('--pretrain', type=str, default='ckpts/045000.pth')
-    # parser.add_argument('--pretrain', type=str, default=None)
+    # parser.add_argument('--pretrain', type=str, default='ckpts/045000.pth')
+    parser.add_argument('--pretrain', type=str, default=None)
 
 
 
@@ -667,7 +667,7 @@ if __name__ == '__main__':
     # Стартовая итерация
     # Видимо, для пауз процесса обучения
     # args.start_iter = 370001
-    args.start_iter = 45001
+    args.start_iter = 0
 
 
 
