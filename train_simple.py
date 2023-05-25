@@ -595,8 +595,8 @@ if __name__ == '__main__':
     parser.add_argument('--save_freq', type=int, default=5000)
     # parser.add_argument('--save_freq', type=int, default=25000)
     # Параметр для оптимизатора
-    # parser.add_argument('--lr', type=float, default=0.002)
-    parser.add_argument('--lr', type=float, default=0.1)
+    parser.add_argument('--lr', type=float, default=0.002)
+    # parser.add_argument('--lr', type=float, default=0.1)
 
     parser.add_argument('--local_rank', type=int, default=0)
     # ckpt weights
@@ -611,8 +611,8 @@ if __name__ == '__main__':
 
 
     # parser.add_argument('--pretrain', type=str, default=None)
-    parser.add_argument('--pretrain', type=str, default='ckpts-2/055000.pth')
-    # parser.add_argument('--pretrain', type=str, default=None)
+    # parser.add_argument('--pretrain', type=str, default='ckpts-2/055000.pth')
+    parser.add_argument('--pretrain', type=str, default=None)
 
 
 
@@ -668,7 +668,7 @@ if __name__ == '__main__':
     # Стартовая итерация
     # Видимо, для пауз процесса обучения
     # args.start_iter = 370001
-    args.start_iter = 55001
+    args.start_iter = 0
 
 
 
