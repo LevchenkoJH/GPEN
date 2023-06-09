@@ -72,7 +72,7 @@ if __name__=='__main__':
     parser.add_argument('--task', type=str, default='FaceEnhancement', help='task of GPEN model')
     parser.add_argument('--key', type=str, default=None, help='key of GPEN model')
     parser.add_argument('--in_size', type=int, default=512, help='in resolution of GPEN')
-    parser.add_argument('--out_size', type=int, default=None, help='out resolution of GPEN')
+    parser.add_argument('--out_size', type=int, default=512, help='out resolution of GPEN')
     parser.add_argument('--channel_multiplier', type=int, default=2, help='channel multiplier of GPEN')
     parser.add_argument('--narrow', type=float, default=1, help='channel narrow scale')
     parser.add_argument('--alpha', type=float, default=1, help='blending the results')
@@ -85,7 +85,7 @@ if __name__=='__main__':
     parser.add_argument('--tile_size', type=int, default=0, help='tile size for SR to avoid OOM')
     parser.add_argument('--indir', type=str, default='examples/imgs', help='input folder')
     parser.add_argument('--outdir', type=str, default='results/outs-BFR', help='output folder')
-    parser.add_argument('--ext', type=str, default='.jpg', help='extension of output')
+    parser.add_argument('--ext', type=str, default='.png', help='extension of output')
     args = parser.parse_args()
 
 
