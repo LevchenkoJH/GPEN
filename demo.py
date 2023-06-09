@@ -17,6 +17,8 @@ from face_inpainting import FaceInpainting
 from segmentation2face import Segmentation2Face
 from tqdm import tqdm
 
+from training.data_loader.dataset_face import GFPGAN_degradation
+
 def brush_stroke_mask(img, color=(255,255,255)):
     min_num_vertex = 8
     max_num_vertex = 28
@@ -67,31 +69,31 @@ def brush_stroke_mask(img, color=(255,255,255)):
     mask = generate_mask(height, width, img)
     return mask
 
-def make_video(input_dir, output_dir, fps):
-    dirs = sorted(os.listdir(input_dir))
+def make_video(input_dir, output_dir, fps, fileName):
+    # dirs = sorted(os.listdir(input_dir))
 
-    for frame_path in tqdm(dirs):
+    # for frame_path in tqdm(dirs):
 
-        frame_path_tmp = os.path.join(input_dir, frame_path)
-        # print(frame_path_tmp)
-        img_array = []
-        files = sorted(glob.glob(frame_path_tmp + '/*.png'))
-        # print(files)
-        size = (0, 0)
-        for filename in files:
-            img = cv2.imread(filename)
-            height, width, layers = img.shape
-            size = (width, height)
-            img_array.append(img)
+    # frame_path_tmp = os.path.join(input_dir, frame_path)
+    # print(frame_path_tmp)
+    img_array = []
+    files = sorted(glob.glob(input_dir + '/*.png'))
+    # print(files)
+    size = (0, 0)
+    for filename in tqdm(files):
+        img = cv2.imread(filename)
+        height, width, layers = img.shape
+        size = (width, height)
+        img_array.append(img)
 
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        out = cv2.VideoWriter(os.path.join(output_dir, frame_path) + '.mp4',
-                              cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), fps, size)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    out = cv2.VideoWriter(os.path.join(output_dir, fileName) + '.mp4',
+                          cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), fps, size)
 
-        for i in range(len(img_array)):
-            out.write(img_array[i])
-        out.release()
+    for i in range(len(img_array)):
+        out.write(img_array[i])
+    out.release()
 
 
 if __name__=='__main__':
@@ -101,7 +103,7 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser()
     # Можно указать свою модель
     # Либо вообще убрать этот аргумент
-    parser.add_argument('--model', type=str, default='300000', help='GPEN model')
+    parser.add_argument('--model', type=str, default='450000-256', help='GPEN model')
     # parser.add_argument('--model', type=str, default='GPEN-BFR-512', help='GPEN model')
     # parser.add_argument('--task', type=str, default='FaceEnhancement', help='task of GPEN model')
     parser.add_argument('--key', type=str, default=None, help='key of GPEN model')
@@ -143,6 +145,8 @@ if __name__=='__main__':
 
 
 
+    degrader = GFPGAN_degradation()
+
 
 
 
@@ -166,6 +170,7 @@ if __name__=='__main__':
         buf_dir = "buffer"
         buf_frames_dir = "frames"
         buf_gpen_frames_dir = "gpen"
+        buf_gpen_demo_dir = "demo"
         # buf = np.array([])
 
 
@@ -174,17 +179,7 @@ if __name__=='__main__':
 
         for i in tqdm(range(int(frames))):
             ret, frame = videoCapture.read()
-            # Заносим кадры в буффер для дальнейшей обработки
-            # if (len(buf) == 0):
-            #     buf = np.expand_dims(frame, axis=0)
-            # else:
-            #     buf = np.concatenate((buf, np.expand_dims(frame, axis=0)), axis=0)
 
-
-
-            # print(os.path.join(buf_dir, '.'.join(video_path.split('.')[:-1]), str(i).zfill(6)) + ".png")
-
-            # _dir =
             if not os.path.exists(os.path.join(buf_dir, video_path)):
                 os.mkdir(os.path.join(buf_dir, video_path))
             if not os.path.exists(os.path.join(buf_dir, video_path, buf_frames_dir)):
@@ -198,82 +193,45 @@ if __name__=='__main__':
 
 
         frames_buf_dirs = sorted(os.listdir(os.path.join(buf_dir, video_path, buf_frames_dir)))
-        print(frames_buf_dirs)
-        print(video_path)
+        # print(frames_buf_dirs, "frames_buf_dirs")
+        # print(video_path)
 
 
 
 
 
         for i in tqdm(range(len(frames_buf_dirs))):
-
-
             file_name = os.path.join(buf_dir, video_path, buf_frames_dir, frames_buf_dirs[i])
-
-            # print(file_name)
 
             img = cv2.imread(file_name, cv2.IMREAD_COLOR) # BGR
 
-            # img = buf[i] # BGR
             if i == 0:
                 corr_img = np.zeros_like(img) # BGR
             else:
-                corr_img = cv2.imread(os.path.join(buf_dir, video_path, buf_frames_dir, frames_buf_dirs[i - 1]), cv2.IMREAD_COLOR) # BGR
+                # corr_img = cv2.imread(os.path.join(buf_dir, video_path, buf_frames_dir, frames_buf_dirs[i - 1]), cv2.IMREAD_COLOR) # BGR
+                corr_img = cv2.imread(os.path.join(buf_dir, video_path, buf_gpen_frames_dir, frames_buf_dirs[i - 1]), cv2.IMREAD_COLOR) # BGR
 
             if not isinstance(img, np.ndarray) or not isinstance(corr_img, np.ndarray): print("ids:", i - 1, i, 'error'); continue
-
-
-
-
-
             img_out, orig_faces, enhanced_faces = processer.process(img=img, corr_img=corr_img, isFirst=i == 0, aligned=args.aligned)
-
-
-
-
-
             img = cv2.resize(img, img_out.shape[:2][::-1])
-            # corr_img = cv2.resize(corr_img, corr_img_out.shape[:2][::-1])
-
-
-
-
-
-
-            # print(video_path)
-            # print(video_path.split('.')[:-1])
 
             buf_dir = "buffer"
             buf_gpen_frames_dir = "gpen"
+            buf_gpen_demo_dir = "demo"
             if not os.path.exists(os.path.join(buf_dir, video_path)):
                 os.mkdir(os.path.join(buf_dir, video_path))
             if not os.path.exists(os.path.join(buf_dir, video_path, buf_gpen_frames_dir)):
                 os.mkdir(os.path.join(buf_dir, video_path, buf_gpen_frames_dir))
+            if not os.path.exists(os.path.join(buf_dir, video_path, buf_gpen_demo_dir)):
+                os.mkdir(os.path.join(buf_dir, video_path, buf_gpen_demo_dir))
 
-
-
-
-
-            cv2.imwrite(os.path.join(buf_dir, video_path, buf_gpen_frames_dir, str(i).zfill(6) + ".png"), np.hstack((img, img_out)))
-            # cv2.imwrite(os.path.join(args.outdir, '.'.join(video_path.split('.')[:-1]) + str(i).zfill(6) + f'_GPEN{args.ext}'), img_out)
-
-
+            cv2.imwrite(os.path.join(buf_dir, video_path, buf_gpen_frames_dir, str(i).zfill(6) + ".png"), img_out)
+            cv2.imwrite(os.path.join(buf_dir, video_path, buf_gpen_demo_dir, str(i).zfill(6) + ".png"), np.hstack((img, img_out)))
 
             if args.save_face:
                 for m, (ef, of) in enumerate(zip(enhanced_faces, orig_faces)):
                     of = cv2.resize(of, ef.shape[:2])
                     cv2.imwrite(os.path.join(args.outdir, '.'.join((video_path + str(i)).split('.')[:-1])+'_face%02d'%m+args.ext), np.hstack((of, ef)))
-
-
-
-            # if n%10==0: print(n, filename)
-
-
-
-
-
-
-
 
 
 
@@ -283,6 +241,10 @@ if __name__=='__main__':
         print(frames_buf_dirs)
         print(os.path.join(buf_dir, video_path))
 
-
-
-        make_video(input_dir=os.path.join(buf_dir, video_path), output_dir=args.outdir, fps=fps)
+        # Изначальное видео
+        _fileName, _ = os.path.splitext(video_path)
+        make_video(input_dir=os.path.join(buf_dir, video_path, buf_frames_dir), output_dir=args.outdir, fps=fps, fileName=_fileName + "_non_C-GPEN")
+        # Demo
+        make_video(input_dir=os.path.join(buf_dir, video_path, buf_gpen_demo_dir), output_dir=args.outdir, fps=fps, fileName=_fileName + "_demo_C-GPEN")
+        # result
+        make_video(input_dir=os.path.join(buf_dir, video_path, buf_gpen_frames_dir), output_dir=args.outdir, fps=fps, fileName=_fileName)

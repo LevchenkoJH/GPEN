@@ -130,20 +130,20 @@ class FaceEnhancement(object):
     def get_clip_image_features(self, correlation_img, clip_model, clip_preprocess):
 
         correlation_img = np.expand_dims(correlation_img, 0)
-        print("correlation_img ->", correlation_img.shape)
+        # print("correlation_img ->", correlation_img.shape)
 
         # Обратные проеобразования для правильной формы входа в CLIP
         correlation_img_copy = correlation_img
         correlation_img_copy = (correlation_img_copy * 0.5) + 0.5
         correlation_img_copy = (correlation_img_copy * 255.).astype(np.uint8)
         # correlation_img_copy = correlation_img_copy.transpose(0, 2, 3, 1)
-        print("correlation_img_copy ->", correlation_img_copy.shape)
+        # print("correlation_img_copy ->", correlation_img_copy.shape)
 
         with torch.no_grad():
             # clip_preprocess не поддерживает батчинг
             clip_image_inputs = []
             for c_img in correlation_img_copy:
-                print("c_img ->", c_img.shape)
+                # print("c_img ->", c_img.shape)
                 pil_img = Image.fromarray(c_img)
 
                 # Prepare the inputs
@@ -200,11 +200,11 @@ class FaceEnhancement(object):
 
 
         # aligned False
-        print("aligned", aligned)
+        # print("aligned", aligned)
         # При увеличении разрешения
         if self.use_sr:
 
-            print("self.use_sr", self.use_sr)
+            # print("self.use_sr", self.use_sr)
 
 
             # Повторяем манипуляции с коррелируемым кадром
@@ -223,11 +223,11 @@ class FaceEnhancement(object):
         corr_facebs, corr_landms = self.facedetector.detect(corr_img)
         facebs, landms = self.facedetector.detect(img)
 
-        print("corr_facebs", corr_facebs)
-        print("corr_landms", corr_landms)
-
-        print("facebs", facebs)
-        print("landms", landms)
+        # print("corr_facebs", corr_facebs)
+        # print("corr_landms", corr_landms)
+        #
+        # print("facebs", facebs)
+        # print("landms", landms)
 
 
         # self.use_sr False
@@ -261,7 +261,7 @@ class FaceEnhancement(object):
         # for i, (faceb, facial5points, corr_faceb, corr_facial5points) in enumerate(zip(facebs, landms, corr_facebs, corr_landms)):
         for i, (faceb, facial5points) in enumerate(zip(facebs, landms)):
 
-            print(faceb, facial5points)#, corr_faceb, corr_facial5points)
+            # print(faceb, facial5points)#, corr_faceb, corr_facial5points)
 
 
             # Нужно учесть что коррелируемое изображение может быть пустым
@@ -296,12 +296,12 @@ class FaceEnhancement(object):
 
 
             if isFirst:
-                print("FIRST !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                # print("FIRST !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 correlation_features = torch.zeros_like(correlation_features)
 
 
 
-            print("correlation_features -> ->", correlation_features)
+            # print("correlation_features -> ->", correlation_features)
 
             # enhance the face
             ef = self.facegan.process(corr_img=correlation_features, img=of)

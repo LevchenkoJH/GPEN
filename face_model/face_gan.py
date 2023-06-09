@@ -52,8 +52,8 @@ class FaceGAN(object):
             # generator(degraded_img, correlation_features)
             # Модель - генератор
 
-            print("corr_img_t -> ", corr_img.shape)
-            print("img_t", img_t.shape)
+            # print("corr_img_t -> ", corr_img.shape)
+            # print("img_t", img_t.shape)
 
             out, __ = self.model(img_t, corr_img)
         # Удаляем за ненадобностью
